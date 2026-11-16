@@ -1,0 +1,189 @@
+/* 动效：所有 keyframes 集中在这里，时长与缓动跟 ui.md 对齐。
+   过渡写在基础规则里（见各组件），这里只放「播一次」的动画。 */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes card-out {
+  to {
+    opacity: 0;
+    transform: scale(0.98) translateY(5px);
+  }
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes view-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes flash-row {
+  0% {
+    background: var(--flash);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
+}
+
+@keyframes pulse-chip {
+  0% {
+    box-shadow: 0 0 0 0 var(--focus-ring-strong);
+  }
+  70% {
+    box-shadow: 0 0 0 8px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+/* 视图切换：只对「切到不同视图」播放，重复点同一个视图不播。 */
+.view.is-entering {
+  animation: view-in 0.22s var(--ease);
+}
+
+/* 正文换内容时淡入一次。 */
+.doc-text.is-entering {
+  animation: panel-in 0.18s var(--ease);
+}
+
+/* 空状态出现时淡入，不要「啪」地一下跳出来。 */
+.doc-empty {
+  animation: panel-in 0.22s var(--ease);
+}
+
+/* 操作栏 / 历史列表整体刷新时淡入。 */
+.rail-body.is-entering {
+  animation: panel-in 0.18s var(--ease);
+}
+
+/* 设置页换分页、处理器页换选中项，共用同一段进入动画。 */
+#settings-content.is-entering,
+.proc-main.is-entering {
+  animation: panel-in 0.18s var(--ease);
+}
+
+/* 版本号变了：脉冲一下，确认「操作生效了」。 */
+.chip.is-flash {
+  animation: pulse-chip 0.9s var(--ease);
+}
+
+/* 新生成的版本行闪一下，提示「刚刚多了一条」。 */
+.hist-row.is-flash .hist-index {
+  animation: pulse-chip 0.9s var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

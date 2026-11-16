@@ -1,9 +1,31 @@
 [project]
 name = "text-processor"
-version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
+version = "1.0.0.dev1"
+description = "A local text workbench that turns long documents into a chain of reviewable versions."
 requires-python = ">=3.11"
 dependencies = [
-    "pyside6>=6.11.1",
+    "loguru>=0.7",
+    "pywebview>=5.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = ["old", ".venv", ".smoke"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+
+[tool.ruff.format]
+quote-style = "double"

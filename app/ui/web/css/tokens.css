@@ -1,0 +1,152 @@
+/* 设计令牌：颜色、圆角、缓动。只有浅色与深色两套，没有「跟随系统」。 */
+
+:root {
+  color-scheme: light;
+
+  --bg: #f0f2f5;
+  --panel: #ffffff;
+  --border: #e5e7eb;
+  --border-strong: #d1d5db;
+  --border-soft: #edf1f6;
+
+  --text: #374151;
+  --text-strong: #111827;
+  --text-soft: #6b7280;
+  --muted: #9ca3af;
+  --placeholder: #c3c9d4;
+
+  --surface-sunken: #f9fafb;
+  --surface-hover: #f8fafc;
+  --surface-active: #f1f5f9;
+  --surface-muted: #f3f4f6;
+
+  --blue: #3b82f6;
+  --blue-dark: #2563eb;
+  --blue-text: #2563eb;
+  --blue-soft: #eff6ff;
+  --blue-border: #bfdbfe;
+
+  --red: #ef4444;
+  --red-dark: #dc2626;
+  --danger-text: #dc2626;
+  --danger-soft: #fef2f2;
+  --red-soft: #fee2e2;
+  --red-text: #991b1b;
+
+  --amber: #f59e0b;
+  --amber-soft: #fef3c7;
+  --amber-text: #92400e;
+
+  --green: #10b981;
+  --green-soft: #d1fae5;
+  --green-text: #065f46;
+
+  --violet: #8b5cf6;
+  --violet-soft: #ede9fe;
+  --violet-text: #5b21b6;
+
+  --knob: #ffffff;
+  --switch-track: #d1d5db;
+  --flash: #dbeafe;
+
+  --diff-del: #fde3e3;
+  --diff-add: #d9f4e5;
+  --mark: #fde68a;
+  --mark-active: #fbbf24;
+
+  --code-bg: #fbfcfd;
+  --gutter-bg: #fafbfc;
+  --gutter-text: #b6bdc9;
+  --seg-on: #ffffff;
+
+  --shadow: rgba(15, 23, 42, 0.12);
+  --shadow-strong: rgba(15, 23, 42, 0.18);
+  --backdrop: rgba(15, 23, 42, 0.32);
+  --focus-ring: rgba(59, 130, 246, 0.14);
+  --focus-ring-strong: rgba(59, 130, 246, 0.2);
+  --invalid-ring: rgba(239, 68, 68, 0.14);
+
+  --toast-bg: #111827;
+  --toast-error: #b91c1c;
+  --scrollbar: #d3d8e0;
+  --scrollbar-hover: #b8bfca;
+  --art-stroke: #cbd5e1;
+
+  --radius: 8px;
+  --radius-lg: 12px;
+  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --line-height: 26px;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #14161a;
+  --panel: #1c1f24;
+  --border: #2a2e35;
+  --border-strong: #3a3f47;
+  --border-soft: #24282e;
+
+  --text: #d7dbe2;
+  --text-strong: #f0f2f5;
+  --text-soft: #9aa1ac;
+  --muted: #6f7681;
+  --placeholder: #5b626d;
+
+  --surface-sunken: #191c21;
+  --surface-hover: #24282f;
+  --surface-active: #2b3038;
+  --surface-muted: #21252b;
+
+  --blue: #4c8df6;
+  --blue-dark: #6aa2f9;
+  --blue-text: #8ab4f8;
+  --blue-soft: #1b2a44;
+  --blue-border: #2f4a74;
+
+  --red: #e5484d;
+  --red-dark: #f2555a;
+  --danger-text: #fca5a5;
+  --danger-soft: #3a1d1f;
+  --red-soft: #3a1d1f;
+  --red-text: #fca5a5;
+
+  --amber: #f5a524;
+  --amber-soft: #3a2e12;
+  --amber-text: #fcd34d;
+
+  --green: #2fbf8f;
+  --green-soft: #12352b;
+  --green-text: #6ee7b7;
+
+  --violet: #a78bfa;
+  --violet-soft: #2a2140;
+  --violet-text: #c4b5fd;
+
+  --knob: #e9edf3;
+  --switch-track: #3a3f47;
+  --flash: #1e3557;
+
+  --diff-del: #46212a;
+  --diff-add: #16352a;
+  --mark: #5a4718;
+  --mark-active: #b45309;
+
+  --code-bg: #171a1f;
+  --gutter-bg: #191c21;
+  --gutter-text: #4c525c;
+  --seg-on: #363b43;
+
+  --shadow: rgba(0, 0, 0, 0.45);
+  --shadow-strong: rgba(0, 0, 0, 0.6);
+  --backdrop: rgba(0, 0, 0, 0.55);
+  --focus-ring: rgba(76, 141, 246, 0.25);
+  --focus-ring-strong: rgba(76, 141, 246, 0.35);
+  --invalid-ring: rgba(229, 72, 77, 0.28);
+
+  --toast-bg: #33383f;
+  --toast-error: #b91c1c;
+  --scrollbar: #3a4048;
+  --scrollbar-hover: #4b525c;
+  --art-stroke: #3a4048;
+}

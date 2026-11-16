@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文本处理器</title>
+<script>
+  // 在样式表加载之前定主题，避免深色模式下先闪一帧白底。
+  (function () {
+    try {
+      var stored = localStorage.getItem("tp-theme");
+      if (stored === "dark" || stored === "light") {
+        document.documentElement.dataset.theme = stored;
+      }
+    } catch (error) {
+      /* localStorage 不可用就用默认浅色 */
+    }
+  })();
+</script>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/views.css">
+<link rel="stylesheet" href="css/motion.css">
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- ================= 主视图 ================= -->
+  <section class="view is-active" data-view="main">
+
+    <aside class="sidebar">
+      <header class="side-head">
+        <div class="titles">
+          <h1 data-i18n="app.title">文本处理器</h1>
+          <p id="project-count" data-i18n="sidebar.count" data-n="0">共 0 个</p>
+        </div>
+        <div class="head-actions">
+          <button class="icon-btn" id="btn-theme" data-i18n-title="settings.theme">
+            <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"/></svg>
+            <svg class="icon-moon" viewBox="0 0 24 24"><path d="M20 14.4A8.4 8.4 0 1 1 9.6 4a6.9 6.9 0 0 0 10.4 10.4Z"/></svg>
+          </button>
+          <button class="icon-btn" id="btn-settings" data-i18n-title="settings.title">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="search">
+        <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>
+        <input type="text" id="project-search" data-i18n-placeholder="sidebar.search" placeholder="搜索项目" autocomplete="off" spellcheck="false">
+        <button class="search-clear hidden" id="search-clear" aria-label="清除">×</button>
+      </div>
+
+      <div class="list" id="project-list"></div>
+
+      <footer class="side-foot">
+        <button class="btn block primary" id="btn-new-project">
+          <span data-i18n="sidebar.new">新建项目</span>
+          <kbd>Ctrl N</kbd>
+        </button>
+      </footer>
+    </aside>
+
+    <main class="doc">
+      <header class="doc-head">
+        <div class="doc-titles">
+          <h2 id="doc-title">—</h2>
+          <div class="doc-meta" id="doc-meta"></div>
+        </div>
+        <div class="doc-tools">
+          <button class="icon-btn rail-toggle" id="btn-rail" data-i18n-title="rail.ops" style="display:none">
+            <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+          </button>
+          <button class="icon-btn" id="btn-find" data-i18n-title="doc.find">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>
+          </button>
+          <button class="icon-btn" id="btn-wrap" data-i18n-title="doc.wrap.on">
+            <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h12a3 3 0 1 1 0 6h-3M4 18h4"/><path d="M10 15l-3 3 3 3"/></svg>
+          </button>
+          <button class="btn" id="btn-manual" data-i18n="rail.manual">手动修改</button>
+        </div>
+      </header>
+
+      <div class="findbar hidden" id="findbar">
+        <input class="input" type="text" id="find-input" data-i18n-placeholder="doc.find.placeholder" placeholder="在正文中查找" autocomplete="off" spellcheck="false">
+        <span class="find-count" id="find-count"></span>
+        <button class="icon-btn" id="find-prev" data-i18n-title="doc.find.prev">
+          <svg viewBox="0 0 24 24"><path d="M12 19V6M6 12l6-6 6 6"/></svg>
+        </button>
+        <button class="icon-btn" id="find-next" data-i18n-title="doc.find.next">
+          <svg viewBox="0 0 24 24"><path d="M12 5v13M6 12l6 6 6-6"/></svg>
+        </button>
+        <button class="icon-btn" id="find-close" data-i18n-title="doc.find.close">
+          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+
+      <div class="banner hidden" id="preview-banner">
+        <span id="preview-text"></span>
+        <div class="banner-actions">
+          <button class="btn" id="preview-continue" data-i18n="doc.preview.continue">从此版本继续</button>
+          <button class="btn" id="preview-exit" data-i18n="doc.preview.exit">回到最新</button>
+        </div>
+      </div>
+
+      <div class="doc-body" id="doc-body">
+        <div class="gutter hidden" id="gutter"><pre id="gutter-text"></pre></div>
+        <pre class="doc-text" id="doc-text" tabindex="0"></pre>
+        <div class="doc-empty" id="doc-empty"></div>
+      </div>
+    </main>
+
+    <aside class="rail" id="rail">
+      <div class="rail-head">
+        <div class="seg" id="rail-tabs">
+          <button class="seg-item is-active" data-tab="ops" data-i18n="rail.ops">操作</button>
+          <button class="seg-item" data-tab="history" data-i18n="rail.history">历史</button>
+        </div>
+      </div>
+      <div class="rail-body" id="rail-ops"></div>
+      <div class="rail-body hidden" id="rail-history"></div>
+      <footer class="rail-foot">
+        <button class="btn block" id="btn-processors">
+          <span data-i18n="rail.ops.manage">管理处理器</span>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+      </footer>
+    </aside>
+
+    <div class="rail-scrim" id="rail-scrim"></div>
+  </section>
+
+  <!-- ================= 处理器页 ================= -->
+  <section class="view page" data-view="processors">
+    <header class="page-head">
+      <button class="btn ghost" id="proc-back">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+        <span data-i18n="common.back">返回</span>
+      </button>
+      <div class="page-titles">
+        <h2 data-i18n="processors.title">处理器</h2>
+        <p data-i18n="processors.subtitle">每一段处理逻辑都是一个小脚本，可以自己写，也可以让 AI 写。</p>
+      </div>
+      <div class="page-tools">
+        <button class="btn" id="proc-restore" data-i18n="processors.restore">恢复内置处理器</button>
+        <button class="btn" id="proc-new-manual" data-i18n="processors.new.manual">手写代码</button>
+        <button class="btn primary" id="proc-new-ai" data-i18n="processors.new.ai">用 AI 写</button>
+      </div>
+    </header>
+    <div class="page-body">
+      <aside class="proc-list" id="proc-list"></aside>
+      <div class="proc-main" id="proc-main"></div>
+    </div>
+  </section>
+
+  <!-- ================= 设置页 ================= -->
+  <section class="view page" data-view="settings">
+    <header class="page-head">
+      <button class="btn ghost" id="set-back">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+        <span data-i18n="common.back">返回</span>
+      </button>
+      <div class="page-titles">
+        <h2 data-i18n="settings.title">设置</h2>
+      </div>
+    </header>
+    <div class="page-body">
+      <nav class="settings-nav" id="settings-nav"></nav>
+      <div class="settings-body">
+        <div class="settings-inner" id="settings-content"></div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div id="modal-root"></div>
+<div class="toast-root" id="toast-root" aria-live="polite"></div>
+
+<script src="js/core.js"></script>
+<script src="js/components.js"></script>
+<script src="js/overlays.js"></script>
+<script src="js/view-main.js"></script>
+<script src="js/view-processors.js"></script>
+<script src="js/view-settings.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
