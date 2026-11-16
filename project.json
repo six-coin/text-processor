@@ -1,0 +1,14 @@
+{
+    "project_name": "Text Processor",
+    "common_files": [
+        "libs/log.py",
+        "libs/file_helper.py"
+    ],
+    "requirements": [
+        "PyQt6==6.10.2"
+    ],
+    "private_files": [
+        "projects",
+        "logs"
+    ]
+}
