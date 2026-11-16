@@ -115,6 +115,7 @@ class Api:
             "wrap": bool(self._settings.get("wrap", True)),
             "display_limit": int(self._settings.get("display_limit", 10000)),
             "font_size": float(self._settings.get("font_size", 14.5)),
+            "doc_font": str(self._settings.get("doc_font", "default")),
             "data_dir": str(paths.DATA_DIR),
             "version": version.version(),
             "projects": [item.to_dict() for item in self._projects],
@@ -215,6 +216,8 @@ class Api:
                 )
             if "font_size" in patch:
                 self._settings.set("font_size", settings.coerce_font_size(patch["font_size"]))
+            if "doc_font" in patch:
+                self._settings.set("doc_font", settings.coerce_doc_font(patch["doc_font"]))
             try:
                 self._settings.save()
             except OSError as error:
@@ -309,6 +312,18 @@ class Api:
         if not result:
             return {"ok": False, "cancelled": True}
         return {"ok": True, "path": str(result[0])}
+
+    def get_readme(self) -> dict[str, Any]:
+        """当前语言的使用手册。找不到就用英文那份。"""
+        with self._lock:
+            for code in (i18n.language(), i18n.FALLBACK):
+                path = paths.README_DIR / f"{code}.md"
+                try:
+                    text = path.read_text(encoding="utf-8")
+                except OSError:
+                    continue
+                return {"ok": True, "language": code, "markdown": text}
+            return {"ok": False, "markdown": ""}
 
     def open_data_dir(self) -> dict[str, Any]:
         with self._lock:

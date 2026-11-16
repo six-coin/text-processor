@@ -44,15 +44,7 @@
   /** 只有空白字符的默认值在输入框里看不见，补一句说明。 */
   function blankHint(value) {
     if (typeof value !== "string" || !value.length || value.trim() !== "") return "";
-    const names = { " ": "空格", "\u3000": "全角空格", "\t": "制表符" };
-    const counts = {};
-    Array.prototype.forEach.call(value, function (char) {
-      counts[char] = (counts[char] || 0) + 1;
-    });
-    const parts = Object.keys(counts).map(function (char) {
-      return (names[char] || "空白") + " ×" + counts[char];
-    });
-    return "当前值：" + parts.join("、");
+    return T("run.blank_hint", { n: value.length });
   }
 
   function segmentHtml(list, kind) {
@@ -216,7 +208,10 @@
       if (arg.desc) hint.push(arg.desc);
       if (arg.min != null || arg.max != null) {
         hint.push(
-          "范围 " + (arg.min != null ? arg.min : "−∞") + " ~ " + (arg.max != null ? arg.max : "∞")
+          T("run.range", {
+            min: arg.min != null ? arg.min : "−∞",
+            max: arg.max != null ? arg.max : "∞",
+          })
         );
       }
       const blanks = blankHint(String(preset == null ? "" : preset));

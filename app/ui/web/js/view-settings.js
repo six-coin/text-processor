@@ -8,6 +8,9 @@
   const T = TP.T;
   const call = TP.call;
 
+  //: 当前打开的设置弹窗，换语言时要原地重画。
+  let settingsCtx = null;
+
   function row(label, hint, control) {
     const node = el("div", { class: "card-row" });
     const box = el("div", { class: "row-label" });
@@ -30,8 +33,7 @@
     return node;
   }
 
-  function openSettings() {
-    const list = el("div", { class: "settings-list" });
+  function buildRows(list) {
     const state = TP.state;
 
     /* 界面语言 */
@@ -46,15 +48,7 @@
               return { value: item.code, label: item.label };
             }),
             value: state.language,
-            onChange: function (code) {
-              call("set_language", code).then(function (snapshot) {
-                if (!snapshot) return null;
-                return TP.loadStrings().then(function () {
-                  TP.applyStrings();
-                  TP.apply(snapshot);
-                });
-              });
-            },
+            onChange: switchLanguage,
           })
         )
       );
@@ -119,12 +113,31 @@
           options: limits.map(function (value) {
             return {
               value: String(value),
-              label: value ? TP.number(value) + " 字" : T("settings.display.none"),
+              label: value ? TP.number(value) + " " + T("unit.chars") : T("settings.display.none"),
             };
           }),
           value: String(state.display_limit || 0),
           onChange: function (value) {
             call("update_settings", { display_limit: Number(value) }).then(function (snapshot) {
+              if (snapshot) TP.apply(snapshot);
+            });
+          },
+        })
+      )
+    );
+
+    /* 正文字体 */
+    list.appendChild(
+      row(
+        T("settings.font_family"),
+        T("settings.font_family.desc"),
+        TP.select({
+          options: TP.FONT_KEYS.map(function (key) {
+            return { value: key, label: T("font." + key) };
+          }),
+          value: state.doc_font || "default",
+          onChange: function (value) {
+            call("update_settings", { doc_font: value }).then(function (snapshot) {
               if (snapshot) TP.apply(snapshot);
             });
           },
@@ -175,6 +188,15 @@
       )
     );
 
+    /* 使用说明 */
+    list.appendChild(
+      row(
+        T("settings.manual"),
+        T("settings.manual.desc"),
+        smallButton(T("settings.manual.open"), showManual)
+      )
+    );
+
     /* 版本 */
     list.appendChild(
       row(T("settings.version"), "", el("span", { class: "meta-text", text: state.version }))
@@ -188,12 +210,63 @@
         smallButton(T("settings.reset.action"), resetAll, "danger-ghost")
       )
     );
+  }
 
+  function openSettings() {
+    const list = el("div", { class: "settings-list" });
+    buildRows(list);
     TP.openModal({
       title: T("settings.title"),
       body: list,
       actions: [{ label: T("common.close"), value: true, primary: true }],
+      onMount: function (ctx) {
+        settingsCtx = ctx;
+      },
     });
+  }
+
+  /** 换语言后原地重画，不要关掉再开。 */
+  function rebuild() {
+    if (!settingsCtx || !settingsCtx.modal.isConnected) return;
+    const list = el("div", { class: "settings-list" });
+    buildRows(list);
+    settingsCtx.setTitle(T("settings.title"));
+    settingsCtx.setBody(list);
+    settingsCtx.setActions([{ label: T("common.close"), value: true, primary: true }]);
+  }
+
+  function switchLanguage(code) {
+    call("set_language", code).then(function (snapshot) {
+      if (!snapshot) return null;
+      return TP.loadStrings().then(function () {
+        TP.applyStrings();
+        TP.apply(snapshot);
+        rebuild();
+      });
+    });
+  }
+
+  function showManual() {
+    call("get_readme").then(function (result) {
+      if (!result || !result.ok) return;
+      TP.openModal({
+        title: T("settings.manual"),
+        size: "wide",
+        body: el("div", { html: TP.renderMarkdown(trimManual(result.markdown)) }),
+        actions: [{ label: T("common.close"), value: true, primary: true }],
+      });
+    });
+  }
+
+  /** 去掉手册开头的标题行与语言互链：弹窗标题已经说明这是什么。 */
+  function trimManual(markdown) {
+    return String(markdown || "")
+      .split("\n")
+      .filter(function (line) {
+        if (/^#\s/.test(line)) return false;
+        return !/^\[[^\]]+\]\([^)]+\)\s*$/.test(line.trim());
+      })
+      .join("\n");
   }
 
   function resetAll() {

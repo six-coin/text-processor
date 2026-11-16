@@ -28,6 +28,7 @@
     const currentId = state.current ? state.current.id : "";
     const sig = JSON.stringify([
       currentId,
+      state.language,
       query,
       projects.map(function (item) {
         return [item.id, item.name, item.updated, item.count, item.broken];
@@ -65,7 +66,8 @@
       body.appendChild(el("span", { class: "row-title", text: item.name }));
       const sub = item.broken
         ? T("sidebar.broken")
-        : (item.count ? item.count + " 版" : "0 版") + (item.updated ? " · " + TP.shortTime(item.updated) : "");
+        : T("sidebar.versions", { n: item.count }) +
+        (item.updated ? " · " + TP.shortTime(item.updated) : "");
       body.appendChild(el("span", { class: "row-sub", text: sub }));
       row.appendChild(body);
 
@@ -340,6 +342,7 @@
     const current = state.current;
 
     const sig = JSON.stringify([
+      state.language,
       current ? current.id : "",
       state.versions.map(function (item) { return [item.index, item.title, item.current]; }),
       state.preview ? state.preview.index : 0,
@@ -428,7 +431,7 @@
           '<span class="hist-index">' + item.index + "</span>" +
           '<span><span class="hist-title">' + esc(item.title) + "</span>" +
           '<span class="hist-sub">' + esc(TP.shortTime(item.at)) + " · " +
-          TP.number(item.lines) + " 行</span></span>" +
+          TP.number(item.lines) + " " + esc(T("unit.lines")) + "</span></span>" +
           (item.current ? '<span class="hist-flag">' + esc(T("rail.history.current")) + "</span>" : "");
         row.addEventListener("click", function () {
           if (item.current && !state.preview) return;

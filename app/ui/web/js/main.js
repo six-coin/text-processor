@@ -39,6 +39,9 @@
     if (snapshot.font_size) {
       document.documentElement.style.setProperty("--doc-size", snapshot.font_size + "px");
     }
+    if (snapshot.doc_font && TP.FONTS[snapshot.doc_font]) {
+      document.documentElement.style.setProperty("--doc-font", TP.FONTS[snapshot.doc_font]);
+    }
 
     const changedProject =
       !previous ||

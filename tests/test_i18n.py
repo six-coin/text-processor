@@ -68,7 +68,8 @@ def test_no_unused_keys_left_behind():
         key
         for key in table
         if key != "language.name"
-        and not key.startswith("type.")  # 由 "type." + 类型 拼出来
+        # 这两组是拼出来的：T("type." + 类型)、T("font." + 字体代号)
+        and not key.startswith(("type.", "font."))
         and f'"{key}"' not in corpus
         and f"'{key}'" not in corpus
     )
@@ -76,9 +77,33 @@ def test_no_unused_keys_left_behind():
 
 
 def test_language_meta():
-    assert i18n.available()
-    assert i18n.available()[0]["code"] == "zh-CN"
-    assert i18n.available()[0]["label"]
+    codes = [item["code"] for item in i18n.available()]
+    assert "zh-CN" in codes
+    assert "en-US" in codes
+    assert all(item["label"] for item in i18n.available())
+
+
+def test_locales_have_the_same_keys():
+    zh = json.loads((paths.LOCALES_DIR / "zh-CN.json").read_text(encoding="utf-8"))
+    en = json.loads((paths.LOCALES_DIR / "en-US.json").read_text(encoding="utf-8"))
+    assert set(zh) == set(en), {
+        "只在中文里": sorted(set(zh) - set(en)),
+        "只在英文里": sorted(set(en) - set(zh)),
+    }
+
+
+def test_locales_have_the_same_placeholders():
+    zh = json.loads((paths.LOCALES_DIR / "zh-CN.json").read_text(encoding="utf-8"))
+    en = json.loads((paths.LOCALES_DIR / "en-US.json").read_text(encoding="utf-8"))
+    for key in zh:
+        placeholders = set(re.findall(r"\{(\w+)\}", zh[key]))
+        assert placeholders == set(re.findall(r"\{(\w+)\}", en[key])), f"{key} 的占位符不一致"
+
+
+def test_english_locale_has_no_chinese():
+    en = json.loads((paths.LOCALES_DIR / "en-US.json").read_text(encoding="utf-8"))
+    leftovers = {key: value for key, value in en.items() if re.search(r"[\u4e00-\u9fff]", value)}
+    assert leftovers == {}, f"英文语言包里有中文：{leftovers}"
 
 
 def test_unknown_key_returns_key():

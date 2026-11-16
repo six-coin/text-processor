@@ -76,7 +76,8 @@
   --radius-lg: 12px;
   --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
 
-  /* 正文字号由设置决定，行高跟着一起缩放，行号才能继续对齐。 */
+  /* 正文字体与字号由设置决定，行高跟着字号缩放，行号才能继续对齐。 */
+  --doc-font: "Microsoft YaHei", "Segoe UI", "Helvetica Neue", sans-serif;
   --doc-size: 14.5px;
   --line-height: calc(var(--doc-size) * 1.8);
 }

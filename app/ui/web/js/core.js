@@ -203,7 +203,8 @@ window.TP = window.TP || {};
   }
 
   function number(value) {
-    return Number(value || 0).toLocaleString("zh-CN");
+    const language = (TP.state && TP.state.language) || "zh-CN";
+    return Number(value || 0).toLocaleString(language);
   }
 
   /** 输入防抖：用于搜索框这类每敲一下就重绘的地方。 */
@@ -258,4 +259,15 @@ window.TP = window.TP || {};
   TP.typeLabel = function (type) {
     return T("type." + type);
   };
+
+  //: 正文可选的字体栈。键要和 settings.DOC_FONTS 一致。
+  TP.FONTS = {
+    default: '"Microsoft YaHei", "Segoe UI", "Helvetica Neue", sans-serif',
+    simsun: 'SimSun, "Songti SC", "STSong", serif',
+    simhei: 'SimHei, "Heiti SC", "STHeiti", sans-serif',
+    kaiti: 'KaiTi, "Kaiti SC", "STKaiti", serif',
+    fangsong: 'FangSong, "FangSong_GB2312", "STFangsong", serif',
+    dengxian: '"DengXian", "Microsoft YaHei", sans-serif',
+  };
+  TP.FONT_KEYS = ["default", "simsun", "simhei", "kaiti", "fangsong", "dengxian"];
 })(window.TP);

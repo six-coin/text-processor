@@ -27,12 +27,17 @@ DEFAULT_LIMIT = 10000
 FONT_SIZES = (13, 14.5, 16, 18, 20)
 DEFAULT_FONT_SIZE = 14.5
 
+#: 正文可选的字体。具体字体栈在界面的 core.js 里，这里只校验代号。
+DOC_FONTS = ("default", "simsun", "simhei", "kaiti", "fangsong", "dengxian")
+DEFAULT_DOC_FONT = "default"
+
 _DEFAULT: dict[str, Any] = {
     "language": "",
     "theme": "",
     "wrap": True,
     "display_limit": DEFAULT_LIMIT,
     "font_size": DEFAULT_FONT_SIZE,
+    "doc_font": DEFAULT_DOC_FONT,
     "last_project": "",
     "recent": {},
 }
@@ -58,14 +63,12 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 
 def coerce_display_limit(value: object) -> int:
-    """夹到允许的档位；认不出来就用默认值。"""
+    """0 或负数表示不限制；其它正整数按字面值用（界面只给五档）。"""
     try:
         number = int(value)  # type: ignore[arg-type]
     except (TypeError, ValueError):
         return DEFAULT_LIMIT
-    if number <= 0:
-        return 0
-    return min(DISPLAY_LIMITS) if number < min(DISPLAY_LIMITS) else number
+    return max(0, number)
 
 
 def coerce_font_size(value: object) -> float:
@@ -77,6 +80,12 @@ def coerce_font_size(value: object) -> float:
     if not 12 <= number <= 24:
         return DEFAULT_FONT_SIZE
     return round(number, 1)
+
+
+def coerce_doc_font(value: object) -> str:
+    """认不出来的字体代号回退到默认。"""
+    key = str(value or "").strip().lower()
+    return key if key in DOC_FONTS else DEFAULT_DOC_FONT
 
 
 def _write_json(path: Path, payload: Any) -> None:
@@ -123,6 +132,7 @@ class Settings:
         data["wrap"] = bool(raw.get("wrap", True))
         data["display_limit"] = coerce_display_limit(raw.get("display_limit"))
         data["font_size"] = coerce_font_size(raw.get("font_size"))
+        data["doc_font"] = coerce_doc_font(raw.get("doc_font"))
         data["last_project"] = str(raw.get("last_project", "") or "").strip()
         recent = raw.get("recent")
         data["recent"] = recent if isinstance(recent, dict) else {}
@@ -156,6 +166,7 @@ class Settings:
             "wrap": bool(self._data.get("wrap", True)),
             "display_limit": int(self._data.get("display_limit", DEFAULT_LIMIT)),
             "font_size": float(self._data.get("font_size", DEFAULT_FONT_SIZE)),
+            "doc_font": str(self._data.get("doc_font", DEFAULT_DOC_FONT)),
         }
 
     def recent_for(self, processor_id: str) -> dict[str, Any]:
