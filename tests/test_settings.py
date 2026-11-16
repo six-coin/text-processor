@@ -73,3 +73,21 @@ def test_recent_roundtrip(tmp_path):
     again = settings.Settings(path)
     again.load()
     assert again.recent_for("trim") == {"params": {"chars": " "}, "compare": True}
+
+
+def test_font_size_clamped():
+    assert settings.coerce_font_size(16) == 16
+    assert settings.coerce_font_size("18") == 18
+    assert settings.coerce_font_size(200) == settings.DEFAULT_FONT_SIZE
+    assert settings.coerce_font_size("abc") == settings.DEFAULT_FONT_SIZE
+    assert settings.coerce_font_size(None) == settings.DEFAULT_FONT_SIZE
+
+
+def test_font_size_roundtrip(tmp_path):
+    path = tmp_path / "app.json"
+    store = settings.Settings(path)
+    store.load()
+    store.set("font_size", 18)
+    store.save()
+    again = settings.Settings(path)
+    assert again.load()["font_size"] == 18

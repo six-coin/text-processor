@@ -114,6 +114,7 @@ class Api:
             "theme": self._settings.get("theme"),
             "wrap": bool(self._settings.get("wrap", True)),
             "display_limit": int(self._settings.get("display_limit", 10000)),
+            "font_size": float(self._settings.get("font_size", 14.5)),
             "data_dir": str(paths.DATA_DIR),
             "version": version.version(),
             "projects": [item.to_dict() for item in self._projects],
@@ -212,6 +213,8 @@ class Api:
                 self._settings.set(
                     "display_limit", settings.coerce_display_limit(patch["display_limit"])
                 )
+            if "font_size" in patch:
+                self._settings.set("font_size", settings.coerce_font_size(patch["font_size"]))
             try:
                 self._settings.save()
             except OSError as error:

@@ -23,11 +23,16 @@ THEMES = theme.THEMES
 DISPLAY_LIMITS = (5000, 10000, 20000, 50000, 0)
 DEFAULT_LIMIT = 10000
 
+#: 正文预览的字号（像素）。超出范围就夹到最近的合法值。
+FONT_SIZES = (13, 14.5, 16, 18, 20)
+DEFAULT_FONT_SIZE = 14.5
+
 _DEFAULT: dict[str, Any] = {
     "language": "",
     "theme": "",
     "wrap": True,
     "display_limit": DEFAULT_LIMIT,
+    "font_size": DEFAULT_FONT_SIZE,
     "last_project": "",
     "recent": {},
 }
@@ -61,6 +66,17 @@ def coerce_display_limit(value: object) -> int:
     if number <= 0:
         return 0
     return min(DISPLAY_LIMITS) if number < min(DISPLAY_LIMITS) else number
+
+
+def coerce_font_size(value: object) -> float:
+    """夹到 12–24 之间；认不出来就用默认值。"""
+    try:
+        number = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return DEFAULT_FONT_SIZE
+    if not 12 <= number <= 24:
+        return DEFAULT_FONT_SIZE
+    return round(number, 1)
 
 
 def _write_json(path: Path, payload: Any) -> None:
@@ -106,6 +122,7 @@ class Settings:
         data["theme"] = theme.resolve(raw.get("theme"))
         data["wrap"] = bool(raw.get("wrap", True))
         data["display_limit"] = coerce_display_limit(raw.get("display_limit"))
+        data["font_size"] = coerce_font_size(raw.get("font_size"))
         data["last_project"] = str(raw.get("last_project", "") or "").strip()
         recent = raw.get("recent")
         data["recent"] = recent if isinstance(recent, dict) else {}
@@ -138,6 +155,7 @@ class Settings:
             "theme": self._data.get("theme") or theme.DEFAULT,
             "wrap": bool(self._data.get("wrap", True)),
             "display_limit": int(self._data.get("display_limit", DEFAULT_LIMIT)),
+            "font_size": float(self._data.get("font_size", DEFAULT_FONT_SIZE)),
         }
 
     def recent_for(self, processor_id: str) -> dict[str, Any]:

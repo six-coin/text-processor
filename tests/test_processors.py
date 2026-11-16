@@ -201,3 +201,30 @@ def test_optional_process_param_is_fine():
     )
     item = processors.build(source, "demo")
     assert item.type == "check"
+
+
+def test_builtin_cannot_be_saved_over():
+    processors.restore_builtins()
+    source = (paths.PROCESSORS_DIR / "trim.py").read_text(encoding="utf-8")
+    with pytest.raises(ProcessorError, match="内置处理器"):
+        processors.save("trim", source)
+
+
+def test_builtin_cannot_be_deleted():
+    processors.restore_builtins()
+    with pytest.raises(ProcessorError, match="内置处理器"):
+        processors.delete("trim")
+    assert (paths.PROCESSORS_DIR / "trim.py").exists()
+
+
+def test_builtin_flag_survives_reload():
+    processors.restore_builtins()
+    loaded, _ = processors.load_all()
+    flags = {item.id: item.builtin for item in loaded}
+    assert flags["trim"] is True
+
+
+def test_created_processor_is_not_builtin():
+    item = processors.create(LINE_OK)
+    assert item.builtin is False
+    processors.delete(item.id)

@@ -8,7 +8,7 @@
   padding: 18px 28px 44px;
   overflow: auto;
   color: var(--text);
-  font-size: 14.5px;
+  font-size: var(--doc-size);
   line-height: var(--line-height);
   white-space: pre-wrap;
   overflow-wrap: break-word;
@@ -79,7 +79,7 @@
 }
 
 .find-count {
-  min-width: 74px;
+  min-width: 0;
   color: var(--muted);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
@@ -162,6 +162,11 @@
 
 .rail-manual {
   margin-bottom: 14px;
+}
+
+/* 这个按钮只有一行字，不要用 .block 的「两端对齐」。 */
+.btn.block.rail-manual {
+  justify-content: center;
 }
 
 /* ---------- 历史 ---------- */
@@ -394,6 +399,12 @@
   resize: none;
   tab-size: 4;
   outline: none;
+}
+
+.editor-area textarea[readonly] {
+  background: var(--surface-sunken);
+  color: var(--text-soft);
+  cursor: default;
 }
 
 .editor-area textarea::placeholder {

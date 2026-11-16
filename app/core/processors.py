@@ -416,6 +416,8 @@ def load_all() -> tuple[list[Processor], list[dict[str, str]]]:
 
 def save(processor_id: str, source: str) -> Processor:
     """校验并写入处理器文件。校验不过不落盘。"""
+    if processor_id in _builtin_ids():
+        raise ProcessorError("内置处理器不能修改")
     processor = build(source, processor_id)
     paths.PROCESSORS_DIR.mkdir(parents=True, exist_ok=True)
     path = paths.PROCESSORS_DIR / f"{processor_id}.py"
@@ -439,6 +441,8 @@ def create(source: str) -> Processor:
 
 
 def delete(processor_id: str) -> None:
+    if processor_id in _builtin_ids():
+        raise ProcessorError("内置处理器不能删除")
     path = paths.PROCESSORS_DIR / f"{processor_id}.py"
     try:
         path.unlink()

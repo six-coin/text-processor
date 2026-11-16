@@ -132,6 +132,26 @@
       )
     );
 
+    /* 正文字号 */
+    const sizes = [13, 14.5, 16, 18, 20];
+    list.appendChild(
+      row(
+        T("settings.font"),
+        T("settings.font.desc"),
+        TP.select({
+          options: sizes.map(function (value) {
+            return { value: String(value), label: value + " px" };
+          }),
+          value: String(state.font_size || 14.5),
+          onChange: function (value) {
+            call("update_settings", { font_size: Number(value) }).then(function (snapshot) {
+              if (snapshot) TP.apply(snapshot);
+            });
+          },
+        })
+      )
+    );
+
     /* 数据目录 */
     const dirRow = row(T("settings.data.dir"), state.data_dir, null);
     const dirTools = el("div", { style: "display:flex;gap:8px;flex:none" });

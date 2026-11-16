@@ -18,6 +18,18 @@ body {
   line-height: 1.55;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
+  /* 界面文字不给选，免得拖一下整片变蓝。要复制的地方在下面单独放开。 */
+  user-select: none;
+}
+
+input,
+textarea,
+.doc-text,
+.review-line-text,
+.ai-preview,
+.path-text,
+.toast {
+  user-select: text;
 }
 
 h1,

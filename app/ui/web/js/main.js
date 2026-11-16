@@ -36,6 +36,9 @@
     TP.state = snapshot;
 
     if (snapshot.theme) TP.setTheme(snapshot.theme);
+    if (snapshot.font_size) {
+      document.documentElement.style.setProperty("--doc-size", snapshot.font_size + "px");
+    }
 
     const changedProject =
       !previous ||

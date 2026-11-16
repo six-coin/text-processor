@@ -226,7 +226,7 @@ DATA_DIR = read_data_dir()
 APP_CONFIG_PATH = DATA_DIR / "app.json"
 PROJECTS_DIR = DATA_DIR / "projects"
 PROCESSORS_DIR = DATA_DIR / "processors"
-RECYCLE_DIR = DATA_DIR / "_recycle"
+RECYCLE_DIR = DATA_DIR / "recycle"
 
 ENTRY_MAIN = PROGRAM_DIR / "main.pyw"
 PYTHONW = PROGRAM_DIR / ".venv" / "Scripts" / "pythonw.exe"

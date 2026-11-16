@@ -207,12 +207,14 @@
     meta.textContent = bits.join(" · ");
     titles.appendChild(meta);
 
+    const locked = !!(processor && processor.builtin);
     const tools = el("div", { class: "editor-tools" });
     const checkBtn = el("button", { class: "btn", type: "button", text: T("processors.validate") });
     const saveBtn = el("button", { class: "btn primary", type: "button", text: T("processors.save") });
-    const delBtn = el("button", { class: "btn danger-ghost", type: "button", text: T("processors.delete") });
+    const delBtn = el("button", { class: "btn danger", type: "button", text: T("processors.delete") });
     tools.appendChild(checkBtn);
-    if (processor || brokenError) tools.appendChild(delBtn);
+    if ((processor || brokenError) && !locked) tools.appendChild(delBtn);
+    if (locked) saveBtn.disabled = true;
     tools.appendChild(saveBtn);
 
     head.appendChild(titles);
@@ -226,6 +228,7 @@
     const areaBox = el("div", { class: "editor-area" });
     const area = el("textarea", { spellcheck: "false", placeholder: T("processors.editor.placeholder") });
     area.value = source;
+    if (locked) area.readOnly = true;
     areaBox.appendChild(area);
     box.appendChild(gutterBox);
     box.appendChild(areaBox);
@@ -266,6 +269,7 @@
 
     paintGutter();
     if (brokenError) paintStatus("bad", brokenError.error);
+    else if (locked) paintStatus("", T("processors.builtin.locked"));
     else paintStatus("", "");
 
     area.addEventListener("input", function () {
@@ -299,6 +303,7 @@
     }
 
     function doSave() {
+      if (locked) return;
       const source2 = area.value;
       if (!source2.trim()) {
         paintStatus("bad", T("processors.need_code"));
@@ -334,7 +339,7 @@
       }
     });
 
-    if (processor || brokenError) {
+    if ((processor || brokenError) && !locked) {
       delBtn.addEventListener("click", function () {
         TP.confirm({
           title: T("processors.delete.title"),

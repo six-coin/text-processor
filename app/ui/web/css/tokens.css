@@ -75,7 +75,10 @@
   --radius: 8px;
   --radius-lg: 12px;
   --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
-  --line-height: 26px;
+
+  /* 正文字号由设置决定，行高跟着一起缩放，行号才能继续对齐。 */
+  --doc-size: 14.5px;
+  --line-height: calc(var(--doc-size) * 1.8);
 }
 
 [data-theme="dark"] {
