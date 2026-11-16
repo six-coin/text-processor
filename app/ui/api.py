@@ -14,8 +14,10 @@
 from __future__ import annotations
 
 import threading
+from pathlib import Path
 from typing import Any
 
+import webview
 from loguru import logger
 
 from app import i18n, paths, settings, version
@@ -41,6 +43,7 @@ class Api:
         self._window: Any = None
         self._dirty = False
         self._close_confirmed = False
+        self._restart = False
 
         self._refresh_processors()
         self._refresh_projects()
@@ -110,13 +113,20 @@ class Api:
             "languages": i18n.available(),
             "theme": self._settings.get("theme"),
             "wrap": bool(self._settings.get("wrap", True)),
+            "display_limit": int(self._settings.get("display_limit", 10000)),
             "data_dir": str(paths.DATA_DIR),
             "version": version.version(),
             "projects": [item.to_dict() for item in self._projects],
             "current": None,
             "versions": [],
             "preview": None,
-            "text_meta": {"lines": 0, "chars": 0},
+            "text_meta": {
+                "lines": 0,
+                "chars": 0,
+                "shown_chars": 0,
+                "shown_lines": 0,
+                "truncated": False,
+            },
             "processors": [
                 {**item.to_dict(), "last": self._settings.recent_for(item.id)}
                 for item in self._processors
@@ -141,9 +151,21 @@ class Api:
             if self._preview_index:
                 payload["preview"] = {"index": self._preview_index}
         if text is not None:
-            payload["text"] = text
-            payload["text_meta"] = text_tools.stats(text)
+            payload["text"], payload["text_meta"] = self._shown(text)
         return payload
+
+    def _shown(self, full: str) -> tuple[str, dict[str, Any]]:
+        """按设置截断正文，同时给出全文与已显示部分的统计。
+
+        截断只影响下发，不影响任何处理：处理器拿到的始终是完整文本。
+        """
+        meta: dict[str, Any] = dict(text_tools.stats(full))
+        limit = int(self._settings.get("display_limit", 10000) or 0)
+        shown = full[:limit] if limit and len(full) > limit else full
+        meta["shown_chars"] = len(shown)
+        meta["shown_lines"] = len(shown.splitlines())
+        meta["truncated"] = len(shown) < len(full)
+        return shown, meta
 
     def _fail(self, message: str, *, text: str | None = None) -> dict[str, Any]:
         return self._snapshot(text=text, message=message, ok=False)
@@ -186,6 +208,10 @@ class Api:
                 self._settings.set("theme", "dark" if patch["theme"] == "dark" else "light")
             if "wrap" in patch:
                 self._settings.set("wrap", bool(patch["wrap"]))
+            if "display_limit" in patch:
+                self._settings.set(
+                    "display_limit", settings.coerce_display_limit(patch["display_limit"])
+                )
             try:
                 self._settings.save()
             except OSError as error:
@@ -203,6 +229,83 @@ class Api:
             except OSError as error:
                 return self._fail(i18n.t("error.generic", error=error))
             return self._with_text(i18n.t("settings.reset.done"))
+
+    def set_data_dir(self, raw: str) -> dict[str, Any]:
+        """记下新的数据目录。真正的搬迁在下次启动时由 paths 完成。"""
+        with self._lock:
+            current = paths.DATA_DIR
+            typed = str(raw or "").strip().strip('"').strip()
+            if typed:
+                # 用户可能只是把原路径又点了一遍，先按原样比一次。
+                try:
+                    if Path(typed).resolve() == current.resolve():
+                        return self._snapshot(message=i18n.t("settings.data.same"), ok=False)
+                except OSError:
+                    pass
+            try:
+                target = paths.normalize_data_dir(typed, current)
+            except OSError as error:
+                return self._fail(i18n.t("error.generic", error=error))
+            if target == current:
+                return self._snapshot(message=i18n.t("settings.data.same"), ok=False)
+            if paths.is_nested(target, current) or paths.is_nested(current, target):
+                return self._fail(i18n.t("settings.data.nested"))
+            try:
+                paths.request_data_dir(str(target))
+            except OSError as error:
+                return self._fail(i18n.t("error.generic", error=error))
+            snapshot = self._snapshot(message=i18n.t("settings.data.pending", path=str(target)))
+            snapshot["pending_dir"] = str(target)
+            return snapshot
+
+    def restart_app(self) -> dict[str, Any]:
+        """关掉窗口；真正的重启由 app.main 在释放互斥量之后完成。"""
+        with self._lock:
+            self._restart = True
+            if self._window is not None:
+                try:
+                    self._window.destroy()
+                except Exception as error:  # noqa: BLE001
+                    logger.warning("销毁窗口失败：{}", error)
+            return {"ok": True}
+
+    def wants_restart(self) -> bool:
+        return self._restart
+
+    def browse_folder(self) -> dict[str, Any]:
+        with self._lock:
+            return self._pick(webview.FOLDER_DIALOG)
+
+    def import_text(self) -> dict[str, Any]:
+        """选一个文本文件读进来，给「新建项目」用。"""
+        with self._lock:
+            picked = self._pick(
+                webview.OPEN_DIALOG,
+                ("文本文件 (*.txt;*.md;*.log;*.csv)", "所有文件 (*.*)"),
+            )
+            if not picked.get("ok"):
+                return picked
+            path = Path(picked["path"])
+            try:
+                content = text_tools.decode_bytes(path.read_bytes())
+            except OSError as error:
+                return {"ok": False, "message": i18n.t("error.generic", error=error)}
+            return {"ok": True, "name": path.name, "text": content, **text_tools.stats(content)}
+
+    def _pick(self, kind: int, file_types: tuple[str, ...] | None = None) -> dict[str, Any]:
+        if self._window is None:
+            return {"ok": False, "message": i18n.t("error.generic", error="窗口未就绪")}
+        options: dict[str, Any] = {"allow_multiple": False}
+        if file_types:
+            options["file_types"] = file_types
+        try:
+            result = self._window.create_file_dialog(kind, **options)
+        except Exception as error:  # noqa: BLE001
+            logger.warning("打开文件对话框失败：{}", error)
+            return {"ok": False, "message": i18n.t("error.generic", error=error)}
+        if not result:
+            return {"ok": False, "cancelled": True}
+        return {"ok": True, "path": str(result[0])}
 
     def open_data_dir(self) -> dict[str, Any]:
         with self._lock:

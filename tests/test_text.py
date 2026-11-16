@@ -53,3 +53,19 @@ def test_changed_lines_respects_limit():
     items, omitted = diff.changed_lines(old, new, limit=4)
     assert len(items) == 4
     assert omitted == 6
+
+
+def test_decode_utf8():
+    assert text_tools.decode_bytes("中文".encode()) == "中文"
+
+
+def test_decode_gbk():
+    assert text_tools.decode_bytes("中文".encode("gb18030")) == "中文"
+
+
+def test_decode_utf16_with_bom():
+    assert text_tools.decode_bytes("中文".encode("utf-16")) == "中文"
+
+
+def test_decode_never_raises():
+    assert isinstance(text_tools.decode_bytes(b"\xff\x00\xfe"), str)

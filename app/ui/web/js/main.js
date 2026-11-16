@@ -56,7 +56,6 @@
     TP.renderDoc();
     TP.renderRail();
     if (TP.ui.view === "processors") TP.renderProcessors();
-    if (TP.ui.view === "settings") TP.renderSettings();
 
     if (snapshot.message) TP.toast(snapshot.message, snapshot.ok === false);
   }
@@ -116,7 +115,6 @@
   function bind() {
     TP.bindMain();
     TP.bindProcessors();
-    TP.bindSettings();
     $("#btn-theme").addEventListener("click", toggleTheme);
     $("#btn-settings").addEventListener("click", function () {
       TP.openSettings();

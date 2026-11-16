@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ctypes
 import os
+import subprocess
 import sys
 import threading
 
@@ -106,6 +107,21 @@ def main() -> int:
         window.events.closing += on_closing
         logger.info("窗口已创建：{}×{}", width, height)
         webview.start(debug=bool(os.environ.get("TP_DEBUG")), http_server=True)
+
+        if api.wants_restart():
+            # 先放锁再拉新进程，否则新进程会以为自己不是唯一实例。
+            lock.release()
+            logger.info("按用户要求重启")
+            try:
+                subprocess.Popen(
+                    [str(bootstrap.pythonw()), str(paths.ENTRY_MAIN)],
+                    cwd=str(paths.PROGRAM_DIR),
+                    close_fds=True,
+                )
+            except OSError as error:
+                logger.error("重启失败：{}", error)
+            return 0
+
         logger.info("程序正常退出")
         return 0
     except Exception as error:

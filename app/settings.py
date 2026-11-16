@@ -19,10 +19,15 @@ from app.system import theme
 #: 允许的主题取值。只有浅色与深色，没有「跟随系统」。
 THEMES = theme.THEMES
 
+#: 正文一次最多显示多少字。0 表示不限制。
+DISPLAY_LIMITS = (5000, 10000, 20000, 50000, 0)
+DEFAULT_LIMIT = 10000
+
 _DEFAULT: dict[str, Any] = {
     "language": "",
     "theme": "",
     "wrap": True,
+    "display_limit": DEFAULT_LIMIT,
     "last_project": "",
     "recent": {},
 }
@@ -45,6 +50,17 @@ def _read_json(path: Path) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ConfigError(f"配置文件 {path.name} 的顶层必须是一个对象")
     return data
+
+
+def coerce_display_limit(value: object) -> int:
+    """夹到允许的档位；认不出来就用默认值。"""
+    try:
+        number = int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return DEFAULT_LIMIT
+    if number <= 0:
+        return 0
+    return min(DISPLAY_LIMITS) if number < min(DISPLAY_LIMITS) else number
 
 
 def _write_json(path: Path, payload: Any) -> None:
@@ -89,6 +105,7 @@ class Settings:
             data["language"] = language
         data["theme"] = theme.resolve(raw.get("theme"))
         data["wrap"] = bool(raw.get("wrap", True))
+        data["display_limit"] = coerce_display_limit(raw.get("display_limit"))
         data["last_project"] = str(raw.get("last_project", "") or "").strip()
         recent = raw.get("recent")
         data["recent"] = recent if isinstance(recent, dict) else {}
@@ -120,6 +137,7 @@ class Settings:
             "language": self._data.get("language") or "",
             "theme": self._data.get("theme") or theme.DEFAULT,
             "wrap": bool(self._data.get("wrap", True)),
+            "display_limit": int(self._data.get("display_limit", DEFAULT_LIMIT)),
         }
 
     def recent_for(self, processor_id: str) -> dict[str, Any]:

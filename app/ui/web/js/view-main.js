@@ -177,6 +177,20 @@
         esc(T("doc.meta", { lines: TP.number(state.text_meta.lines), chars: TP.number(state.text_meta.chars) })) +
         "</span>"
     );
+    if (state.text_meta.truncated) {
+      parts.push(
+        '<span class="chip plain" title="' +
+          esc(
+            T("doc.truncated.title", {
+              total: TP.number(state.text_meta.chars),
+              n: TP.number(state.text_meta.shown_chars),
+            })
+          ) +
+          '">' +
+          esc(T("doc.truncated", { n: TP.number(state.text_meta.shown_chars) })) +
+          "</span>"
+      );
+    }
     metaNode.innerHTML = parts.join("");
 
     renderPreviewBanner();
@@ -193,8 +207,15 @@
     $("#btn-wrap").classList.toggle("is-on", !wrap);
     $("#btn-wrap").title = T(wrap ? "doc.wrap.on" : "doc.wrap.off");
 
+    // shown_chars 进签名：改「显示上限」时正文要跟着重画。
     const key =
-      current.id + "#" + (viewing || current.index) + "|" + (TP.ui.find.open ? TP.ui.find.query : "");
+      current.id +
+      "#" +
+      (viewing || current.index) +
+      "|" +
+      (TP.ui.find.open ? TP.ui.find.query : "") +
+      "|" +
+      (state.text_meta.shown_chars || 0);
     if (key !== docSig) {
       docSig = key;
       paintText();
@@ -214,7 +235,7 @@
       gutterSig = "";
       return;
     }
-    const lines = (state.text_meta && state.text_meta.lines) || 0;
+    const lines = (state.text_meta && state.text_meta.shown_lines) || 0;
     const sig = lines + "|" + ((state.text || "").length);
     if (sig === gutterSig && gutterText.textContent) return;
     gutterSig = sig;
@@ -482,11 +503,19 @@
     });
 
     const search = $("#project-search");
+    const searchBox = search.closest(".search");
+
+    function syncSearch() {
+      const hasValue = !!search.value;
+      $("#search-clear").classList.toggle("hidden", !hasValue);
+      searchBox.classList.toggle("has-value", hasValue);
+    }
+
     search.addEventListener(
       "input",
       TP.debounce(function () {
         TP.ui.projectQuery = search.value;
-        $("#search-clear").classList.toggle("hidden", !search.value);
+        syncSearch();
         projectSig = "";
         renderProjects();
       }, 120)
@@ -494,7 +523,7 @@
     $("#search-clear").addEventListener("click", function () {
       search.value = "";
       TP.ui.projectQuery = "";
-      $("#search-clear").classList.add("hidden");
+      syncSearch();
       projectSig = "";
       renderProjects();
       search.focus();

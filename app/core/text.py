@@ -27,3 +27,22 @@ def join(lines: list[str], trailing_newline: bool) -> str:
     if trailing_newline and body:
         return body + "\n"
     return body
+
+
+def decode_bytes(raw: bytes) -> str:
+    """尽量把一段字节解成文本。
+
+    顺序：带 BOM 的 UTF-16 → UTF-8（含 BOM）→ GB18030 → Latin-1。
+    GB18030 几乎不会失败，所以放在最后兜底之前——它解 UTF-16 会得到乱码。
+    """
+    if raw.startswith((b"\xff\xfe", b"\xfe\xff")):
+        try:
+            return raw.decode("utf-16")
+        except UnicodeDecodeError:
+            pass
+    for encoding in ("utf-8-sig", "gb18030"):
+        try:
+            return raw.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("latin-1")

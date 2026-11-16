@@ -92,8 +92,6 @@ _TYPE_ALIASES = {
 }
 _PY_TYPES = {str: "str", int: "int", float: "float", bool: "bool"}
 
-_EMPTY_DEFAULT = {"str": "", "text": "", "int": 0, "float": 0.0, "bool": False}
-
 _NAME_RE = re.compile(r"[\s\u3000]+")
 
 
@@ -223,10 +221,16 @@ def _coerce(arg_type: str, value: Any, label: str) -> Any:
 
 
 def _parse_arg(arg_id: str, raw: Any) -> Arg:
+    """解析一个参数声明。name / type / default 三个键一个都不能少。"""
     if not isinstance(raw, dict):
         raise ProcessorError(f"参数 {arg_id} 的声明必须是一个字典")
-    arg_type = _normalize_type(raw.get("type", "str"))
-    name = _clean_name(raw.get("name"), arg_id, 40)
+    for key in ("name", "type", "default"):
+        if key not in raw:
+            raise ProcessorError(f"参数 {arg_id} 缺少 {key}")
+    arg_type = _normalize_type(raw.get("type"))
+    name = _clean_name(raw.get("name"), "")
+    if not name:
+        raise ProcessorError(f"参数 {arg_id} 的 name 不能为空")
     desc = str(raw.get("desc", "") or "").strip()
 
     options: list[dict[str, str]] = []
@@ -242,7 +246,7 @@ def _parse_arg(arg_id: str, raw: Any) -> Arg:
         if not options:
             raise ProcessorError(f"参数 {arg_id} 是 choice 类型，必须提供 options")
 
-    default = raw.get("default", _EMPTY_DEFAULT.get(arg_type, ""))
+    default = raw.get("default")
     if arg_type == "choice":
         allowed = [option["value"] for option in options]
         default = str(default)
@@ -279,11 +283,17 @@ def _parse_meta(meta: Any, func: Callable[..., Any]) -> dict[str, Any]:
     if not name:
         raise ProcessorError("init() 里的 name 不能为空")
     desc = _clean_name(meta.get("desc"), "", 120)
+    if not desc:
+        raise ProcessorError("init() 里的 desc 不能为空")
+    if "type" not in meta:
+        raise ProcessorError("init() 里缺少 type")
     kind = str(meta.get("type", "") or "").strip().lower()
     if kind not in TYPES:
         raise ProcessorError(f"type 只能是 {' / '.join(TYPES)}，收到的是 {kind or '空'}")
 
-    raw_args = meta.get("args") or {}
+    raw_args = meta.get("args", {})
+    if raw_args is None:
+        raw_args = {}
     if not isinstance(raw_args, dict):
         raise ProcessorError("init() 里的 args 必须是一个字典")
     args = [_parse_arg(str(key), value) for key, value in raw_args.items()]
@@ -296,7 +306,7 @@ def _parse_meta(meta: Any, func: Callable[..., Any]) -> dict[str, Any]:
 
 
 def _check_signature(func: Callable[..., Any], args: list[Arg]) -> None:
-    """确认 process 能接住这些参数，避免运行时才炸。"""
+    """确认 process 的签名和 args 对得上，避免「保存成功、一运行就报错」。"""
     try:
         signature = inspect.signature(func)
     except (TypeError, ValueError):  # 某些内建函数取不到签名，交给运行时
@@ -305,17 +315,30 @@ def _check_signature(func: Callable[..., Any], args: list[Arg]) -> None:
     positional = [
         item
         for item in parameters
-        if item.kind in (item.POSITIONAL_ONLY, item.POSITIONAL_OR_KEYWORD, item.VAR_POSITIONAL)
+        if item.kind in (item.POSITIONAL_ONLY, item.POSITIONAL_OR_KEYWORD)
     ]
-    if not positional:
+    accepts_var_positional = any(item.kind == item.VAR_POSITIONAL for item in parameters)
+    if not positional and not accepts_var_positional:
         raise ProcessorError("process() 至少要接受一个参数（当前这一行或整篇文本）")
-    accepts_any = any(item.kind == item.VAR_KEYWORD for item in parameters)
-    if accepts_any:
+    if any(item.kind == item.VAR_KEYWORD for item in parameters):
         return
+
     declared = {item.name for item in parameters}
     missing = [arg.id for arg in args if arg.id not in declared]
     if missing:
         raise ProcessorError(f"process() 缺少形参：{'、'.join(missing)}")
+
+    # 反过来也要查：process 要求的必填参数，args 里没声明，运行时会直接 TypeError。
+    known = {arg.id for arg in args}
+    unbound = [
+        item.name
+        for item in positional[1:]
+        if item.default is inspect.Parameter.empty and item.name not in known
+    ]
+    if unbound:
+        raise ProcessorError(
+            f"process() 需要参数 {'、'.join(unbound)}，但 init() 的 args 里没有声明"
+        )
 
 
 def build(source: str, processor_id: str, builtin: bool = False) -> Processor:

@@ -94,8 +94,36 @@
       style: "height:260px;font-family:Consolas,'Cascadia Mono',monospace;font-size:13px;",
       placeholder: T("project.new.text.placeholder"),
     });
+    const importBtn = el("button", {
+      class: "btn sm",
+      type: "button",
+      text: T("project.new.import"),
+    });
+    importBtn.addEventListener("click", function () {
+      importBtn.disabled = true;
+      call("import_text").then(function (result) {
+        importBtn.disabled = false;
+        if (!result || result.cancelled) return;
+        if (!result.ok) {
+          TP.toast(T("project.new.import.failed", { error: result.message || "" }), true);
+          return;
+        }
+        text.value = result.text || "";
+        clearFieldError(text);
+        TP.toast(T("project.new.imported", { name: result.name, n: TP.number(result.chars) }));
+      });
+    });
+
+    const textField = el("div", { class: "field" });
+    const textLabel = el("div", { class: "field-label" });
+    textLabel.appendChild(el("span", { text: T("project.new.text") }));
+    textLabel.appendChild(el("span", { style: "flex:1" }));
+    textLabel.appendChild(importBtn);
+    textField.appendChild(textLabel);
+    textField.appendChild(text);
+
     body.appendChild(fieldRow(T("project.new.name"), name));
-    body.appendChild(fieldRow(T("project.new.text"), text));
+    body.appendChild(textField);
 
     TP.openModal({
       title: T("project.new.title"),
@@ -389,85 +417,105 @@
       TP.toast(T("error.preview"), true);
       return;
     }
-    const body = el("div", { style: "display:flex;flex-direction:column;gap:10px;height:100%;min-height:0" });
-    const area = el("textarea", { class: "plain-editor" });
-    area.value = TP.state.text || "";
-    const hint = el("p", { class: "field-hint", text: T("manual.desc") });
-    body.appendChild(area);
-    body.appendChild(hint);
 
-    let externalUsed = false;
+    const current = TP.state.current;
+    const body = el("div", {
+      style: "display:flex;flex-direction:column;height:100%;min-height:0",
+    });
+
+    const bar = el("div", { class: "manual-bar" });
+    const externalBtn = el("button", { class: "btn sm", type: "button", text: T("manual.external") });
+    const reloadBtn = el("button", { class: "btn sm", type: "button", text: T("manual.reload") });
+    reloadBtn.disabled = true;
+    const status = el("span", { class: "status", text: T("manual.desc") });
+    bar.appendChild(externalBtn);
+    bar.appendChild(reloadBtn);
+    bar.appendChild(status);
+
+    const area = el("textarea", { class: "plain-editor", spellcheck: "false" });
+    area.style.height = "auto";
+    area.style.flex = "1";
+    area.style.minHeight = "0";
+    area.value = TP.state.text || "";
+
+    body.appendChild(bar);
+    body.appendChild(area);
+
+    let external = false;
+
+    externalBtn.addEventListener("click", function () {
+      externalBtn.disabled = true;
+      call("external_edit", area.value).then(function (result) {
+        if (!result || !result.ok) {
+          externalBtn.disabled = false;
+          TP.toast(T("manual.external.failed"), true);
+          return;
+        }
+        external = true;
+        area.readOnly = true;
+        reloadBtn.disabled = false;
+        status.textContent = T("manual.external.opened");
+        status.classList.add("is-on");
+        reloadBtn.focus();
+      });
+    });
+
+    reloadBtn.addEventListener("click", function () {
+      reloadBtn.disabled = true;
+      call("read_external").then(function (result) {
+        reloadBtn.disabled = false;
+        if (!result || !result.ok) {
+          TP.toast(T("manual.failed", { error: (result && result.message) || "" }), true);
+          return;
+        }
+        area.value = result.text || "";
+        TP.toast(T("manual.reloaded"));
+      });
+    });
+
+    function save(ctx) {
+      ctx.setActions([{ label: T("common.save"), disabled: true }]);
+      // 外部编辑模式下先把磁盘上的最新内容读回来，免得用户忘了点「重新读取」。
+      const latest = external
+        ? call("read_external").then(function (result) {
+            return result && result.ok ? result.text : area.value;
+          })
+        : Promise.resolve(area.value);
+
+      latest
+        .then(function (text) {
+          return call("save_manual", text);
+        })
+        .then(function (snapshot) {
+          ctx.close(true);
+          if (snapshot) TP.apply(snapshot);
+        });
+    }
 
     TP.openModal({
       title: T("manual.title"),
+      subtitle:
+        T("doc.version", { n: current.index }) + (current.title ? " · " + current.title : ""),
       size: "xl",
       body: body,
       actions: [
-        {
-          label: T("manual.external"),
-          align: "left",
-          ghost: true,
-          keepOpen: true,
-          onClick: function (ctx) {
-            call("external_edit", area.value).then(function (result) {
-              if (!result) return;
-              if (!result.ok) {
-                TP.toast(T("manual.external.failed"), true);
-                return;
-              }
-              externalUsed = true;
-              hint.textContent = T("manual.external.hint");
-              ctx.setActions(actionsFor(ctx));
-            });
-            return false;
-          },
-        },
-        {
-          label: T("manual.reload"),
-          align: "left",
-          ghost: true,
-          keepOpen: true,
-          onClick: function () {
-            call("read_external").then(function (result) {
-              if (!result || !result.ok) {
-                TP.toast(T("manual.failed", { error: (result && result.message) || "" }), true);
-                return;
-              }
-              area.value = result.text || "";
-              TP.toast(T("manual.reloaded"));
-            });
-            return false;
-          },
-        },
         { label: T("common.cancel"), value: null, ghost: true },
         {
           label: T("common.save"),
           value: true,
           primary: true,
           onClick: function (ctx) {
-            ctx.setActions([{ label: T("common.save"), disabled: true }]);
-            call("save_manual", area.value).then(function (snapshot) {
-              ctx.close(true);
-              if (snapshot) TP.apply(snapshot);
-            });
+            save(ctx);
             return false;
           },
         },
       ],
     });
 
-    function actionsFor() {
-      return [
-        { label: T("manual.external"), align: "left", ghost: true, disabled: externalUsed, keepOpen: true },
-        { label: T("manual.reload"), align: "left", ghost: true, keepOpen: true },
-        { label: T("common.cancel"), value: null, ghost: true },
-        { label: T("common.save"), value: true, primary: true },
-      ];
-    }
-
     setTimeout(function () {
       area.focus();
-      area.setSelectionRange(area.value.length, area.value.length);
+      area.setSelectionRange(0, 0);
+      area.scrollTop = 0;
     }, 60);
   }
 

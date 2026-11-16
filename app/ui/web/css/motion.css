@@ -161,10 +161,14 @@
   animation: panel-in 0.18s var(--ease);
 }
 
-/* 设置页换分页、处理器页换选中项，共用同一段进入动画。 */
-#settings-content.is-entering,
+/* 处理器页换选中项，共用同一段进入动画。 */
 .proc-main.is-entering {
   animation: panel-in 0.18s var(--ease);
+}
+
+/* 轻提示换内容时重新弹一下。 */
+.toast.is-entering {
+  animation: toast-in 0.2s var(--ease);
 }
 
 /* 版本号变了：脉冲一下，确认「操作生效了」。 */

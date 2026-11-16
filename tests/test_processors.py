@@ -148,3 +148,56 @@ def test_save_does_not_write_invalid_source():
 def test_template_is_valid():
     item = processors.build(processors.template(), "tpl")
     assert item.type == "line"
+
+
+def test_missing_desc_rejected():
+    source = LINE_OK.replace('        "desc": "去掉行首尾空格",\n', "")
+    with pytest.raises(ProcessorError, match="desc"):
+        processors.build(source, "demo")
+
+
+def test_missing_arg_name_rejected():
+    source = LINE_OK.replace(
+        '{"name": "字符", "type": "str", "default": " "}', '{"type": "str", "default": " "}'
+    )
+    with pytest.raises(ProcessorError, match="缺少 name"):
+        processors.build(source, "demo")
+
+
+def test_missing_arg_default_rejected():
+    source = LINE_OK.replace('"default": " "', '"desc": "x"')
+    with pytest.raises(ProcessorError, match="缺少 default"):
+        processors.build(source, "demo")
+
+
+def test_missing_arg_type_rejected():
+    source = LINE_OK.replace('"type": "str", ', "")
+    with pytest.raises(ProcessorError, match="缺少 type"):
+        processors.build(source, "demo")
+
+
+def test_undeclared_process_param_rejected():
+    """process 要的参数没在 args 里声明，运行时必然 TypeError，必须在保存时挡住。"""
+    source = LINE_OK.replace('"args": {"chars"', '"args": {"other"').replace(
+        "def process(line, chars):", "def process(line, chars):"
+    )
+    with pytest.raises(ProcessorError):
+        processors.build(source, "demo")
+
+
+def test_extra_required_param_rejected():
+    source = CHECK_OK.replace(
+        '"args": {"limit": {"name": "上限", "type": "int", "default": 3, "min": 1, "max": 99}}',
+        '"args": {}',
+    )
+    with pytest.raises(ProcessorError, match="没有声明"):
+        processors.build(source, "demo")
+
+
+def test_optional_process_param_is_fine():
+    source = CHECK_OK.replace("def process(line, limit):", "def process(line, limit=5):").replace(
+        '"args": {"limit": {"name": "上限", "type": "int", "default": 3, "min": 1, "max": 99}}',
+        '"args": {}',
+    )
+    item = processors.build(source, "demo")
+    assert item.type == "check"

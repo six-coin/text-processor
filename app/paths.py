@@ -150,7 +150,7 @@ def clear_pending_data_dir() -> None:
         pass
 
 
-def _is_nested(inner: Path, outer: Path) -> bool:
+def is_nested(inner: Path, outer: Path) -> bool:
     """``inner`` 是否在 ``outer`` 里（含相等）。"""
     try:
         inner.relative_to(outer)
@@ -206,7 +206,7 @@ def _reconcile_data_dir() -> None:
     if target == source:
         clear_pending_data_dir()
         return
-    if _is_nested(target, source) or _is_nested(source, target):
+    if is_nested(target, source) or is_nested(source, target):
         MIGRATION_WARNINGS = [f"数据目录不能互相嵌套：{source} → {target}"]
         return
     MIGRATION_WARNINGS, MIGRATED_ITEMS = _move_contents(source, target)

@@ -118,29 +118,35 @@ window.TP = window.TP || {};
 
   /* ---------------------------------------------------------------- 轻提示 */
 
-  const TOAST_MAX = 3;
+  let toastNode = null;
+  let toastTimer = null;
 
+  function hideToast() {
+    if (!toastNode) return;
+    const node = toastNode;
+    toastNode = null;
+    clearTimeout(toastTimer);
+    node.classList.add("is-leaving");
+    setTimeout(function () {
+      node.remove();
+    }, 220);
+  }
+
+  /** 同一时刻只有一条：新消息直接盖在旧的那条上，并重新计时。 */
   function toast(message, isError) {
     if (!message) return;
     const root = $("#toast-root");
     if (!root) return;
-    while (root.children.length >= TOAST_MAX) root.removeChild(root.firstChild);
-
-    const node = el("div", { class: "toast" + (isError ? " is-error" : "") });
-    node.textContent = message;
-    root.appendChild(node);
-
-    let done = false;
-    function remove() {
-      if (done) return;
-      done = true;
-      node.classList.add("is-leaving");
-      setTimeout(function () {
-        node.remove();
-      }, 210);
+    if (!toastNode) {
+      toastNode = el("div", { class: "toast" });
+      toastNode.addEventListener("click", hideToast);
+      root.appendChild(toastNode);
     }
-    node.addEventListener("click", remove);
-    setTimeout(remove, isError ? 4200 : 2600);
+    toastNode.textContent = message;
+    toastNode.classList.toggle("is-error", !!isError);
+    replay(toastNode, "is-entering", 260);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, isError ? 4200 : 2600);
   }
 
   /* ---------------------------------------------------------------- 动效 */

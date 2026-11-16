@@ -53,10 +53,11 @@
   text-align: right;
 }
 
+/* 用 block 而不是 flex：flex 会让子元素按内容宽度收缩，空状态就不居中了。 */
 .doc-empty {
   position: absolute;
   inset: 0;
-  display: flex;
+  display: block;
   background: var(--panel);
 }
 
@@ -274,6 +275,10 @@
   color: var(--danger-text);
 }
 
+.proc-row .dot {
+  margin-top: 5px;
+}
+
 .proc-row .row-name {
   display: flex;
   align-items: center;
@@ -419,41 +424,14 @@
   text-overflow: ellipsis;
 }
 
-/* ---------- 设置页 ---------- */
-.settings-nav-item {
-  padding: 7px 10px;
-  border: none;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--text-soft);
-  font-size: 13px;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    background 0.14s ease,
-    color 0.14s ease;
+/* ---------- 设置弹窗 ---------- */
+.settings-list {
+  display: flex;
+  flex-direction: column;
 }
 
-.settings-nav-item:hover {
-  background: var(--surface-hover);
-  color: var(--text);
-}
-
-.settings-nav-item.is-active {
-  background: var(--blue-soft);
-  color: var(--blue-text);
-}
-
-.settings-section {
-  margin-bottom: 26px;
-}
-
-.settings-section h3 {
-  margin-bottom: 8px;
-  color: var(--text-soft);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.03em;
+.settings-list .card-row .row-label {
+  flex: 1;
 }
 
 .path-text {
@@ -666,6 +644,28 @@
   overflow: auto;
 }
 
+/* ---------- 手动修改 ---------- */
+.manual-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 10px;
+}
+
+.manual-bar .status {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.manual-bar .status.is-on {
+  color: var(--amber-text);
+}
+
 /* ---------- 编辑器通用 ---------- */
 .plain-editor {
   width: 100%;
@@ -689,4 +689,15 @@
 .plain-editor:focus {
   border-color: var(--blue);
   box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.plain-editor[readonly] {
+  background: var(--surface-sunken);
+  color: var(--text-soft);
+  cursor: default;
+}
+
+.plain-editor[readonly]:focus {
+  border-color: var(--border);
+  box-shadow: none;
 }
