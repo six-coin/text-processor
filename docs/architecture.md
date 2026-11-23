@@ -152,6 +152,7 @@ api.continue_from → projects.truncate（删 versions/NNNN.txt 与清单条目�
 | `processors` | 含源码与上次用过的参数 |
 | `review` | 非空表示这次操作需要逐行确认 |
 | `display_limit` / `font_size` / `doc_font` / `wrap` / `theme` | 界面偏好 |
+| `log_level` / `log_cleanup` / `log_retention_days` / `log_levels` / `log_retention_range` | 日志设置与它的候选项；前端不写死级别表与天数范围 |
 
 正文单独处理的原因：一篇几十万字的文本每次都随快照下发，会让每次点击都卡一下。
 

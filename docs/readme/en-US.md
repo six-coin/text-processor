@@ -133,6 +133,9 @@ Click the gear at the top left. Settings live in `app.json` and apply immediatel
 | Body font | Microsoft YaHei / SimSun / SimHei / KaiTi / FangSong / DengXian | Preview only |
 | Body font size | 13 / 14.5 / 16 / 18 / 20 | Preview only |
 | Preview limit | 5,000 / 10,000 / 20,000 / 50,000 / No limit | The rest is not shown; processing still uses the full text |
+| Log level | Debug / Normal / Warnings / Errors | Takes effect at once and keeps writing to the same file |
+| Clean up logs automatically | On / Off | Deletes log files older than the retention period at startup; turn it off to keep them all |
+| Keep logs for (days) | 1–365 | 30 by default; has no effect while the switch above is off |
 | Data directory | Any absolute path | Moves on the next start; you can restart right away |
 | Recycle folder | — | Opens the folder holding deleted projects |
 
@@ -149,13 +152,13 @@ Click the gear at the top left. Settings live in `app.json` and apply immediatel
 ├─ processors\                processor scripts
 └─ recycle\                   deleted projects
 <local folder>                %LOCALAPPDATA%\six-coin\text-processor
-└─ logs\                      one file per run, kept for 14 days
+└─ logs\                      one file per run, kept for 30 days by default
 <temp folder>                 %TEMP%\six-coin\text-processor
 ```
 
 - `projects`, `processors` and `app.json` are not tracked by version control.
 - Deleting `<data folder>` is a factory reset: every project and every custom processor is gone.
-- Log files rotate at 5 MB and are kept for at most 14 days.
+- Log files rotate at 5 MB. Only the last 30 days are kept by default: older files are deleted at startup, and Settings lets you turn the cleanup off or change the number of days.
 
 ## 14. Troubleshooting
 

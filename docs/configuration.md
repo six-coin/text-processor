@@ -14,6 +14,9 @@
     "display_limit": 10000,
     "font_size": 14.5,
     "doc_font": "default",
+    "log_level": "INFO",
+    "log_cleanup": true,
+    "log_retention_days": 30,
     "last_project": "project-a1b2",
     "recent": {
         "trim": {"params": {"chars": " \u3000\t"}, "compare": true}
@@ -29,6 +32,9 @@
 | `display_limit` | int | `10000` | 正文一次最多显示多少字。`0` 或负数表示不限制；其它正整数按字面值使用（界面只提供 5,000 / 10,000 / 20,000 / 50,000 / 0 五档）。非数字回退 10000。只影响显示，处理始终用全文。 |
 | `font_size` | number | `14.5` | 正文字号（像素）。超出 12–24 或不是数字都回退 14.5。行高 = 字号 × 1.8，一起缩放。 |
 | `doc_font` | string | `"default"` | `default` / `simsun` / `simhei` / `kaiti` / `fangsong` / `dengxian`。认不出来的值回退 `default`。字体栈写在 `app/ui/web/js/core.js` 的 `TP.FONTS` 里。 |
+| `log_level` | string | `"INFO"` | `DEBUG` / `INFO` / `WARNING` / `ERROR`，认不出来的值回退 `INFO`。改完立刻生效，日志仍写在同一个文件里。 |
+| `log_cleanup` | bool | `true` | 为真时在启动与保存这三项设置时清空过期日志，为假时一条都不删。非布尔值按真假值处理，与 `wrap` 一致。 |
+| `log_retention_days` | int | `30` | 保留天数，1–365，越界夹取，非数字回退 30。`log_cleanup` 为假时不起作用。 |
 | `last_project` | string | `""` | 上次打开的项目 ID。指向不存在的项目时静默忽略并清空，不会弹错。 |
 | `recent` | object | `{}` | 处理器 ID → `{"params": {...}, "compare": bool}`，记住上次填的参数。超过 40 条时丢最旧的。 |
 
@@ -99,8 +105,11 @@
 |---|---|
 | 位置 | `%LOCALAPPDATA%\six-coin\text-processor\logs\` |
 | 文件名 | `main_YYYY-MM-DD_HH-MM-SS.log`，每次启动一个 |
+| 级别 | `log_level`，`DEBUG` / `INFO` / `WARNING` / `ERROR` |
 | 格式 | `[LEVEL] [YYYY-MM-DD HH:mm:ss] 消息` |
 | 轮转 | 单文件超过 5 MB 换新文件 |
-| 保留 | 14 天 |
+| 清空 | `log_cleanup` 打开时，启动与保存这三项设置时删掉超过 `log_retention_days` 天的 `*.log` |
 
 崩溃弹窗统一三段：出了什么事、发生时间、日志在哪。日志默认不打印局部变量（`diagnose=False`），避免把敏感内容写进文件。
+
+「自动清空」不走 loguru 的 `retention`：它只在轮转那一刻触发，日志目录一直没涨到 5 MB 就永远不清。改成启动时扫一遍 `logs\*.log`，按修改时间删；另一个进程正开着的文件删不掉，跳过，下次启动再试。

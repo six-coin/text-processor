@@ -20,11 +20,19 @@ from typing import Any
 import webview
 from loguru import logger
 
-from app import i18n, paths, settings, version
+from app import i18n, logging_setup, paths, settings, version
 from app.core import diff, processors, projects, prompt, review
 from app.core import text as text_tools
 from app.errors import ProcessorError, ProjectError
 from app.system import shell
+
+#: 四个日志级别的显示名。键写成完整字符串，文案守卫才查得到有人在用。
+LOG_LEVEL_KEYS = {
+    "DEBUG": "settings.log_level_debug",
+    "INFO": "settings.log_level_info",
+    "WARNING": "settings.log_level_warning",
+    "ERROR": "settings.log_level_error",
+}
 
 
 class Api:
@@ -32,6 +40,8 @@ class Api:
         self._lock = threading.RLock()
         self._settings = settings.Settings()
         self._settings.load()
+        # 日志文件在读到设置之前就开了（默认级别），这里补上用户选的那一份。
+        self._settings.apply_log_settings()
         i18n.set_language(self._settings.get("language") or i18n.initial_language())
 
         self._processors: list[processors.Processor] = []
@@ -116,6 +126,17 @@ class Api:
             "display_limit": int(self._settings.get("display_limit", 10000)),
             "font_size": float(self._settings.get("font_size", 14.5)),
             "doc_font": str(self._settings.get("doc_font", "default")),
+            "log_level": str(self._settings.get("log_level", "INFO")),
+            "log_cleanup": bool(self._settings.get("log_cleanup", True)),
+            "log_retention_days": int(self._settings.get("log_retention_days", 30)),
+            "log_levels": [
+                {"value": level, "label": i18n.t(LOG_LEVEL_KEYS[level])}
+                for level in logging_setup.LOG_LEVELS
+            ],
+            "log_retention_range": [
+                logging_setup.MIN_RETENTION_DAYS,
+                logging_setup.MAX_RETENTION_DAYS,
+            ],
             "data_dir": str(paths.DATA_DIR),
             "version": version.version(),
             "projects": [item.to_dict() for item in self._projects],
@@ -218,10 +239,21 @@ class Api:
                 self._settings.set("font_size", settings.coerce_font_size(patch["font_size"]))
             if "doc_font" in patch:
                 self._settings.set("doc_font", settings.coerce_doc_font(patch["doc_font"]))
+            if "log_level" in patch:
+                self._settings.set("log_level", settings.coerce_log_level(patch["log_level"]))
+            if "log_cleanup" in patch:
+                self._settings.set("log_cleanup", settings.coerce_log_cleanup(patch["log_cleanup"]))
+            if "log_retention_days" in patch:
+                self._settings.set(
+                    "log_retention_days", settings.coerce_log_days(patch["log_retention_days"])
+                )
             try:
                 self._settings.save()
             except OSError as error:
                 return self._fail(i18n.t("error.generic", error=error))
+            # 只有动了日志三件套才重配日志：其余设置不该顺手把文件重开一遍。
+            if any(key.startswith("log_") for key in patch):
+                self._settings.apply_log_settings()
             return self._with_text()
 
     def reset_settings(self) -> dict[str, Any]:
@@ -229,11 +261,15 @@ class Api:
             language = i18n.language()
             self._settings.set("theme", "light")
             self._settings.set("wrap", True)
+            self._settings.set("log_level", logging_setup.DEFAULT_LEVEL)
+            self._settings.set("log_cleanup", True)
+            self._settings.set("log_retention_days", logging_setup.DEFAULT_RETENTION_DAYS)
             self._settings.set("language", language)
             try:
                 self._settings.save()
             except OSError as error:
                 return self._fail(i18n.t("error.generic", error=error))
+            self._settings.apply_log_settings()
             return self._with_text(i18n.t("settings.reset.done"))
 
     def set_data_dir(self, raw: str) -> dict[str, Any]:

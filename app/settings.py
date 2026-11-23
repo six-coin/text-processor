@@ -12,7 +12,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from app import paths
+from app import logging_setup, paths
 from app.errors import ConfigError
 from app.system import theme
 
@@ -38,6 +38,10 @@ _DEFAULT: dict[str, Any] = {
     "display_limit": DEFAULT_LIMIT,
     "font_size": DEFAULT_FONT_SIZE,
     "doc_font": DEFAULT_DOC_FONT,
+    # 日志三件套：级别、是否自动清空、保留天数。
+    "log_level": logging_setup.DEFAULT_LEVEL,
+    "log_cleanup": True,
+    "log_retention_days": logging_setup.DEFAULT_RETENTION_DAYS,
     "last_project": "",
     "recent": {},
 }
@@ -88,6 +92,28 @@ def coerce_doc_font(value: object) -> str:
     return key if key in DOC_FONTS else DEFAULT_DOC_FONT
 
 
+def coerce_log_level(value: object) -> str:
+    """认不出来的日志级别回退默认值。"""
+    text = str(value or "").strip().upper()
+    return text if text in logging_setup.LOG_LEVELS else logging_setup.DEFAULT_LEVEL
+
+
+def coerce_log_cleanup(value: object) -> bool:
+    """非布尔值按真假值处理，与 ``wrap`` 同一套规则。"""
+    return bool(value) if value is not None else True
+
+
+def coerce_log_days(value: object) -> int:
+    """日志保留天数夹到 1–365；读不出数字就回退默认值。"""
+    if isinstance(value, bool):
+        return logging_setup.DEFAULT_RETENTION_DAYS
+    try:
+        days = int(str(value).strip())
+    except (TypeError, ValueError):
+        return logging_setup.DEFAULT_RETENTION_DAYS
+    return max(logging_setup.MIN_RETENTION_DAYS, min(days, logging_setup.MAX_RETENTION_DAYS))
+
+
 def _write_json(path: Path, payload: Any) -> None:
     """临时文件 + ``os.replace``：中途崩溃不会留下半个文件。"""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -133,6 +159,9 @@ class Settings:
         data["display_limit"] = coerce_display_limit(raw.get("display_limit"))
         data["font_size"] = coerce_font_size(raw.get("font_size"))
         data["doc_font"] = coerce_doc_font(raw.get("doc_font"))
+        data["log_level"] = coerce_log_level(raw.get("log_level"))
+        data["log_cleanup"] = coerce_log_cleanup(raw.get("log_cleanup"))
+        data["log_retention_days"] = coerce_log_days(raw.get("log_retention_days"))
         data["last_project"] = str(raw.get("last_project", "") or "").strip()
         recent = raw.get("recent")
         data["recent"] = recent if isinstance(recent, dict) else {}
@@ -167,7 +196,22 @@ class Settings:
             "display_limit": int(self._data.get("display_limit", DEFAULT_LIMIT)),
             "font_size": float(self._data.get("font_size", DEFAULT_FONT_SIZE)),
             "doc_font": str(self._data.get("doc_font", DEFAULT_DOC_FONT)),
+            "log_level": coerce_log_level(self._data.get("log_level")),
+            "log_cleanup": coerce_log_cleanup(self._data.get("log_cleanup")),
+            "log_retention_days": coerce_log_days(self._data.get("log_retention_days")),
         }
+
+    def apply_log_settings(self) -> None:
+        """把日志三件套交给 ``logging_setup``。
+
+        启动读到设置时调一次，设置界面改完再调一次——所以改级别不用重启，写的是
+        同一个日志文件。
+        """
+        logging_setup.configure(
+            level=coerce_log_level(self._data.get("log_level")),
+            cleanup=coerce_log_cleanup(self._data.get("log_cleanup")),
+            retention_days=coerce_log_days(self._data.get("log_retention_days")),
+        )
 
     def recent_for(self, processor_id: str) -> dict[str, Any]:
         recent = self._data.get("recent") or {}

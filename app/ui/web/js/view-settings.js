@@ -165,6 +165,65 @@
       )
     );
 
+    /* 日志级别：与语言同一套下拉框，四个值不会把一行撑开 */
+    list.appendChild(
+      row(
+        T("settings.log_level"),
+        T("settings.log_level.desc"),
+        TP.select({
+          options: (state.log_levels || []).map(function (item) {
+            return { value: item.value, label: item.label };
+          }),
+          value: state.log_level || "INFO",
+          onChange: function (value) {
+            call("update_settings", { log_level: value }).then(function (snapshot) {
+              if (snapshot) TP.apply(snapshot);
+            });
+          },
+        })
+      )
+    );
+
+    /* 自动清空日志 */
+    list.appendChild(
+      row(
+        T("settings.log_cleanup"),
+        T("settings.log_cleanup.desc"),
+        TP.switchNode({
+          checked: state.log_cleanup !== false,
+          onChange: function (on) {
+            call("update_settings", { log_cleanup: on }).then(function (snapshot) {
+              if (snapshot) TP.apply(snapshot);
+            });
+          },
+        })
+      )
+    );
+
+    /* 日志保留天数 */
+    const logDays = el("input", {
+      class: "input",
+      type: "number",
+      min: "1",
+      max: "365",
+      step: "1",
+    });
+    logDays.value = String(state.log_retention_days || 30);
+    logDays.addEventListener("change", function () {
+      const value = Number(logDays.value);
+      if (!Number.isFinite(value)) {
+        logDays.value = String(TP.state.log_retention_days || 30);
+        return;
+      }
+      call("update_settings", { log_retention_days: value }).then(function (snapshot) {
+        if (!snapshot) return;
+        TP.apply(snapshot);
+        // 后端会夹取，输入框跟着回正，别让界面显示一个没生效的数字。
+        logDays.value = String(snapshot.log_retention_days);
+      });
+    });
+    list.appendChild(row(T("settings.log_days"), T("settings.log_days.desc"), logDays));
+
     /* 数据目录 */
     const dirRow = row(T("settings.data.dir"), state.data_dir, null);
     const dirTools = el("div", { style: "display:flex;gap:8px;flex:none" });
