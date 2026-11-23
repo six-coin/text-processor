@@ -1,7 +1,6 @@
 {
     "language.name": "简体中文 (中国)",
     "app.title": "文本处理器",
-    "app.already_running": "程序已经在运行了，请切换到已经打开的窗口。",
     "fatal.unexpected": "程序遇到了无法继续的错误：{error}",
     "fatal.time_line": "发生时间：{value}",
     "fatal.log_line": "日志文件：{value}",
@@ -174,16 +173,15 @@
     "font.dengxian": "等线",
     "settings.data.dir": "数据目录",
     "settings.data.change": "更改",
-    "settings.data.change.title": "更改数据目录",
     "settings.data.change.hint": "末尾会自动补上 text-processor 这一层；数据在下次启动时搬迁。",
-    "settings.data.browse": "浏览…",
     "settings.data.same": "已经是这个目录了",
+    "settings.data.pending_failed": "重启后生效：{path}（上次迁移没成功，会再试一次）",
+    "settings.data.migrated": "已从旧目录迁移 {count} 项到 {path}",
+    "settings.data.restart": "立即重启",
+    "settings.data.reset": "重置",
+    "settings.data.restart_failed": "重启失败：{error}，请手动重新打开程序",
     "settings.data.nested": "新目录不能和当前目录互相嵌套",
     "settings.data.pending": "已记录：下次启动会把数据搬到 {path}",
-    "settings.data.restart.title": "数据目录已记录",
-    "settings.data.restart.text": "重启后会把现有数据搬到新位置。现在就重启吗？",
-    "settings.data.restart.now": "立即重启",
-    "settings.data.restart.later": "稍后",
     "settings.data.open": "打开",
     "settings.data.recycle": "回收站",
     "settings.data.recycle.desc": "删除的项目会放在这里，可以手动找回。",
@@ -202,5 +200,6 @@
     "error.no_project": "请先打开一个项目",
     "error.preview": "预览状态下不能修改文本",
     "error.no_current": "当前没有打开的项目",
-    "settings.reset.action": "重置"
+    "settings.reset.action": "重置",
+    "settings.data.cancelled": "已取消更改，仍使用当前目录"
 }

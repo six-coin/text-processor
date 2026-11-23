@@ -2,8 +2,6 @@
 
 Turn long documents into a chain of reviewable versions with small Python scripts.
 
-[简体中文](zh-CN.md)
-
 ---
 
 ## 1. Installation
@@ -136,7 +134,7 @@ Click the gear at the top left. Settings live in `app.json` and apply immediatel
 | Log level | Debug / Normal / Warnings / Errors | Takes effect at once and keeps writing to the same file |
 | Clean up logs automatically | On / Off | Deletes log files older than the retention period at startup; turn it off to keep them all |
 | Keep logs for (days) | 1–365 | 30 by default; has no effect while the switch above is off |
-| Data directory | Any absolute path | Moves on the next start; you can restart right away |
+| Data directory | Any absolute path | Moves on the next start; the line under the input says "Takes effect after restart" and offers a restart button |
 | Recycle folder | — | Opens the folder holding deleted projects |
 
 ## 13. Files and folders
@@ -164,11 +162,11 @@ Click the gear at the top left. Settings live in `app.json` and apply immediatel
 
 **`main.bat` closes instantly.** Dependencies are missing. Run `setup.bat` first; it reports what is missing.
 
-**"The program is already running".** Only one window is allowed. Find the existing one on the taskbar.
+**Double-clicking does nothing.** Only one window is allowed: a second `main.bat` just brings the open window to the front instead of showing a message. If it lives on another virtual desktop or is minimised, find it on the taskbar.
 
 **Only part of the text is shown.** The preview limit is doing its job. It affects display only — processing still uses the full text. Choose "No limit" to see everything.
 
-**I changed the data directory but nothing moved after restarting.** Moving happens once, at startup. If the target is not writable it is skipped, the old data stays, and the log records it.
+**I changed the data directory but nothing moved after restarting.** Moving happens once, at startup. If the target is not writable it is skipped, the old data stays, and the log records it; the line in Settings still says "Takes effect after restart" and adds "it will be retried". Change the folder back to the current one (or press "Reset") to cancel the change. Read-only files do not block the move.
 
 **A processor will not save.** Read the message: usually `init()` is missing a field, or the parameters of `process()` do not match `args`.
 

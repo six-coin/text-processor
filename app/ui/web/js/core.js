@@ -116,37 +116,78 @@ window.TP = window.TP || {};
     }
   }
 
-  /* ---------------------------------------------------------------- 轻提示 */
+  /* ---------------------------------------------------------------- 状态栏 */
+  /* 底部居中的圆角黑条，界面上唯一的临时提示出口。容器底边固定、条目往上堆，
+     所以新的一条从下面出来时，已有的会自己上移一格；最多同时三条。 */
 
-  let toastNode = null;
-  let toastTimer = null;
-
-  function hideToast() {
-    if (!toastNode) return;
-    const node = toastNode;
-    toastNode = null;
-    clearTimeout(toastTimer);
-    node.classList.add("is-leaving");
-    setTimeout(function () {
-      node.remove();
-    }, 220);
+  /** 记下每条现在的位置，等 DOM 改完再按位移补动画。 */
+  function toastSnapshot(root) {
+    const map = new Map();
+    for (const node of root.children) map.set(node, node.getBoundingClientRect().top);
+    return map;
   }
 
-  /** 同一时刻只有一条：新消息直接盖在旧的那条上，并重新计时。 */
+  /** 把「被顶上去」的位移反向补回来再归零：看起来是往上挪了一格，而不是跳一格。 */
+  function toastSettle(map) {
+    map.forEach(function (top, node) {
+      if (!node.isConnected) return;
+      const delta = top - node.getBoundingClientRect().top;
+      if (!delta) return;
+      node.style.transition = "none";
+      node.style.transform = "translateY(" + delta + "px)";
+      // 强制回流：否则下一帧的 transition 会从同一个值开始，等于没动。
+      void node.offsetHeight;
+      node.style.transition = "transform 0.2s var(--ease)";
+      node.style.transform = "";
+    });
+  }
+
+  /** 让一条原地脱离文档流再飘走，后面的条目不会跟着往下掉。 */
+  function toastRetire(node) {
+    if (!node.isConnected) return;
+    const rect = node.getBoundingClientRect();
+    const ghost = node.cloneNode(true);
+    ghost.classList.remove("is-entering", "is-leaving");
+    ghost.style.position = "fixed";
+    ghost.style.left = rect.left + "px";
+    ghost.style.top = rect.top + "px";
+    // 量出来的宽高要写死：离开容器后它是一块普通的 div，会撑满整行。
+    ghost.style.width = rect.width + "px";
+    ghost.style.height = rect.height + "px";
+    ghost.style.margin = "0";
+    ghost.style.pointerEvents = "none";
+    ghost.style.animation = "toast-out 0.2s ease forwards";
+    document.body.appendChild(ghost);
+    setTimeout(function () {
+      ghost.remove();
+    }, 240);
+    node.remove();
+  }
+
+  function toastDismiss(node) {
+    if (!node.isConnected || node.classList.contains("is-leaving")) return;
+    const map = toastSnapshot(node.parentElement);
+    toastRetire(node);
+    toastSettle(map);
+  }
+
+  /** 弹一条状态。``isError`` 为真时是错误样式，停留更久。 */
   function toast(message, isError) {
-    if (!message) return;
     const root = $("#toast-root");
-    if (!root) return;
-    if (!toastNode) {
-      toastNode = el("div", { class: "toast" });
-      toastNode.addEventListener("click", hideToast);
-      root.appendChild(toastNode);
-    }
-    toastNode.textContent = message;
-    toastNode.classList.toggle("is-error", !!isError);
-    replay(toastNode, "is-entering", 260);
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(hideToast, isError ? 4200 : 2600);
+    const text = String(message === undefined || message === null ? "" : message).trim();
+    if (!root || !text) return;
+
+    const map = toastSnapshot(root);
+    while (root.children.length >= 3) toastRetire(root.firstElementChild);
+
+    const node = el("div", { class: "toast" + (isError ? " is-error" : ""), text: text });
+    node.classList.add("is-entering");
+    root.appendChild(node);
+    toastSettle(map);
+
+    setTimeout(function () {
+      toastDismiss(node);
+    }, isError ? 4200 : 2600);
   }
 
   /* ---------------------------------------------------------------- 动效 */

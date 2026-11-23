@@ -42,14 +42,15 @@ def test_docs_files_exist():
         assert (DOCS / name).is_file(), f"缺少 docs/{name}"
 
 
-def test_manuals_start_with_title_intro_and_link():
+def test_manuals_start_with_title_and_intro():
     assert _lines(ZH)[0].startswith("# ") and _lines(ZH)[0].endswith(" 使用手册")
     assert _lines(EN)[0].startswith("# ") and _lines(EN)[0].endswith(" User Manual")
     for path in (ZH, EN):
-        intro, link = _head(path, 2)
+        intro = _head(path, 1)[0]
         assert "[" not in intro and "`" not in intro and "*" not in intro
-    assert _head(ZH, 2)[1] == "[English](en-US.md)"
-    assert _head(EN, 2)[1] == "[简体中文](zh-CN.md)"
+        # 语言互跳链接不再写在手册里：根目录 README 是唯一的岔路口。
+        assert "[English](en-US.md)" not in _lines(path)
+        assert "[简体中文](zh-CN.md)" not in _lines(path)
 
 
 def test_english_intro_matches_pyproject_description():

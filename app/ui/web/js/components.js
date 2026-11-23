@@ -24,6 +24,40 @@
     if (top.dismissible) top.close(null);
   }, true);
 
+  /* 弹窗打开时 Tab 只能在弹窗里循环，不能跑到后面的页面上去。 */
+  document.addEventListener("keydown", function (event) {
+    if (event.key !== "Tab") return;
+    const top = activeModal();
+    if (!top) return;
+    const focusables = Array.prototype.slice
+      .call(
+        top.card.querySelectorAll(
+          'button, input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+      )
+      .filter(function (node) {
+        return !node.disabled && node.offsetParent !== null;
+      });
+    if (!focusables.length) {
+      event.preventDefault();
+      top.card.focus();
+      return;
+    }
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    const active = document.activeElement;
+    const outside = !top.card.contains(active);
+    if (event.shiftKey) {
+      if (active === first || outside) {
+        event.preventDefault();
+        last.focus();
+      }
+    } else if (active === last || outside) {
+      event.preventDefault();
+      first.focus();
+    }
+  }, true);
+
   /**
    * 打开一个弹窗。
    * @param {object} options
@@ -36,7 +70,10 @@
     const dismissible = config.dismissible !== false;
 
     const modal = el("div", { class: "modal" });
-    const card = el("div", { class: "modal-card" + (config.size ? " " + config.size : "") });
+    const card = el("div", {
+      class: "modal-card" + (config.size ? " " + config.size : ""),
+      tabindex: "-1",
+    });
 
     const head = el("div", { class: "modal-head" });
     const headText = el("div");
@@ -219,6 +256,20 @@
     openSelect.close();
   });
 
+  // 滚动或改窗口大小时菜单会飘走，直接收起。
+  window.addEventListener("resize", function () {
+    if (openSelect) openSelect.close();
+  });
+  window.addEventListener(
+    "scroll",
+    function (event) {
+      if (!openSelect) return;
+      if (event.target && event.target.closest && event.target.closest(".select-menu")) return;
+      openSelect.close();
+    },
+    true
+  );
+
   /**
    * 自绘下拉。原生 <select> 的弹层在深色模式下没法控制，所以一律自绘。
    * @param {{options: Array<{value:string,label:string}>, value:string,
@@ -262,9 +313,30 @@
       });
     }
 
+    /* 菜单按视口定位：弹窗或矮面板里，绝对定位的菜单会被容器裁掉；固定宽度
+       还会把 “English (United States)” 挤成三行。改成 fixed 后按内容展开。 */
+    function placeMenu() {
+      const rect = node.getBoundingClientRect();
+      menu.style.position = "fixed";
+      menu.style.right = "auto";
+      menu.style.left = rect.left + "px";
+      menu.style.minWidth = rect.width + "px";
+      menu.style.width = "auto";
+      // 菜单比控件宽时可能顶到窗口右边，量完宽度再往里收。
+      const width = menu.offsetWidth;
+      menu.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)) + "px";
+      const height = menu.offsetHeight;
+      let top = rect.bottom + 5;
+      if (top + height > window.innerHeight - 8 && rect.top - height - 5 > 8) {
+        top = rect.top - height - 5;
+      }
+      menu.style.top = Math.max(8, top) + "px";
+    }
+
     function openMenu() {
       if (openSelect && openSelect.node !== node) openSelect.close();
       node.classList.add("open");
+      placeMenu();
       openSelect = { node: node, close: closeMenu };
     }
 

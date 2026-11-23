@@ -152,7 +152,8 @@
   flex: 1;
   min-height: 0;
   margin: 0 -4px;
-  padding: 0 4px;
+  /* 上下各留 4px：第一颗按钮的焦点环画在按钮外面，没有这点余量会被滚动容器裁掉。 */
+  padding: 4px;
   overflow-y: auto;
 }
 

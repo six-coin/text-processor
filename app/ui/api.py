@@ -138,6 +138,9 @@ class Api:
                 logging_setup.MAX_RETENTION_DAYS,
             ],
             "data_dir": str(paths.DATA_DIR),
+            "data_dir_next": str(paths.pending_data_dir() or ""),
+            "data_dir_default": str(paths.DATA_DIR_DEFAULT),
+            "data_dir_status": dict(paths.MIGRATION),
             "version": version.version(),
             "projects": [item.to_dict() for item in self._projects],
             "current": None,
@@ -276,28 +279,31 @@ class Api:
         """记下新的数据目录。真正的搬迁在下次启动时由 paths 完成。"""
         with self._lock:
             current = paths.DATA_DIR
+            had_pending = paths.pending_data_dir() is not None
             typed = str(raw or "").strip().strip('"').strip()
-            if typed:
-                # 用户可能只是把原路径又点了一遍，先按原样比一次。
-                try:
-                    if Path(typed).resolve() == current.resolve():
-                        return self._snapshot(message=i18n.t("settings.data.same"), ok=False)
-                except OSError:
-                    pass
             try:
                 target = paths.normalize_data_dir(typed, current)
             except OSError as error:
                 return self._fail(i18n.t("error.generic", error=error))
-            if target == current:
-                return self._snapshot(message=i18n.t("settings.data.same"), ok=False)
+            # 当前目录可能是少了项目代号的历史写法，规范化后也算同一处。
+            current_norm = paths.normalize_data_dir(str(current), current)
+            if paths._same_dir(target, current) or paths._same_dir(target, current_norm):
+                # 改回当前目录 = 取消待搬迁：只清标记，不写新落点。
+                paths.clear_pending_data_dir()
+                key = "settings.data.cancelled" if had_pending else "settings.data.same"
+                return self._snapshot(message=i18n.t(key))
             if paths.is_nested(target, current) or paths.is_nested(current, target):
                 return self._fail(i18n.t("settings.data.nested"))
             try:
-                paths.request_data_dir(str(target))
+                saved = paths.request_data_dir(str(target))
             except OSError as error:
                 return self._fail(i18n.t("error.generic", error=error))
-            snapshot = self._snapshot(message=i18n.t("settings.data.pending", path=str(target)))
-            snapshot["pending_dir"] = str(target)
+            # 少了项目代号之类的旧写法会被 request_data_dir 认成当前目录，同样按取消处理。
+            if paths._same_dir(saved, current):
+                key = "settings.data.cancelled" if had_pending else "settings.data.same"
+                return self._snapshot(message=i18n.t(key))
+            snapshot = self._snapshot(message=i18n.t("settings.data.pending", path=str(saved)))
+            snapshot["pending_dir"] = str(saved)
             return snapshot
 
     def restart_app(self) -> dict[str, Any]:

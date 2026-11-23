@@ -49,16 +49,22 @@ def _geometry() -> tuple[int, int, int, int]:
     return width, height, x, y
 
 
-def _notify_already_running() -> None:
-    """第二个实例：把已有窗口提到前面，并告诉用户。"""
+def _activate_existing() -> None:
+    """第二个实例：把已有窗口提到前面，然后安静退出。
+
+    多开的意思就是「让我看到那个窗口」，窗到前台就够了。提不上来（窗口标题对
+    不上、被别的会话占用）也只留一条日志：双击完弹一个框只会让人以为出了故障。
+    """
     try:
         data = settings.Settings().load()
         i18n.set_language(str(data.get("language") or i18n.initial_language()))
-    except Exception:  # 配置坏了也要能说出这句话
+    except Exception:  # 配置坏了也要能把标题说对
         i18n.set_language(i18n.initial_language())
-    title = i18n.t("app.title")
-    if not single.activate_window(title):
-        logging_setup.info(i18n.t("app.already_running"), title)
+    if single.activate_window(i18n.t("app.title")):
+        return
+    # 提不上来也要留一条记录：「双击了没反应」是最难解释的现象。
+    logging_setup.setup("main")
+    logger.warning("已有实例在运行，但没能把窗口提到前面")
 
 
 def _dark_mode() -> bool:
@@ -70,7 +76,7 @@ def _dark_mode() -> bool:
 def main() -> int:
     lock = single.InstanceLock()
     if not lock.acquire():
-        _notify_already_running()
+        _activate_existing()
         return 0
 
     logging_setup.setup("main")
@@ -120,6 +126,7 @@ def main() -> int:
                 )
             except OSError as error:
                 logger.error("重启失败：{}", error)
+                logging_setup.info(i18n.t("settings.data.restart_failed", error=error))
             return 0
 
         logger.info("程序正常退出")

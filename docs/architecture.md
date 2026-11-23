@@ -131,11 +131,16 @@ api.continue_from → projects.truncate（删 versions/NNNN.txt 与清单条目�
 ### 数据目录搬迁
 
 ```
-设置里点「更改」→ api.set_data_dir → paths.request_data_dir（只写 pending 标记）
+设置里点「更改」→ api.set_data_dir → paths.request_data_dir
+  （当场建目录 + 写一次探针文件，校验不过就抛 OSError；通过后只写 pending 标记）
 → 下次启动：paths 在 import 时读标记 → 搬内容 → 改指针 → 清标记
 ```
 
 搬迁放在 `paths` 的 import 阶段，因为 `DATA_DIR` 是模块级常量，晚一步就改不动了。
+
+- **只读文件照搬**：跨盘搬运时 `shutil.move` 是「复制 + 删源」，删只读文件会得到「拒绝访问」，所以 `paths._move_item()` 失败时先清掉只读位再搬一次（`_clear_read_only()` 递归处理整棵目录树）。
+- 结果写进 `paths.MIGRATION`（`none` / `same` / `nested` / `done` / `failed`，附搬了多少项、哪些没搬成），快照里的 `data_dir_status` 交给设置页。
+- 设置页那一行的下面写着状态：有待生效的落点就写「重启后生效：<落点>」并出现「立即重启」（`restart_app` → 关窗 → 释放互斥量 → 拉新进程）；刚搬完写「已迁移 N 项」；否则写默认说明。改回当前目录只清标记，状态栏提示「已经是这个目录了」。
 
 ## 7. 前后端契约
 
@@ -221,3 +226,4 @@ tests/
 10. **能局部失败的绝不整体失败**：坏处理器、坏项目都只影响自己。
 11. **动画写在基础规则上**，不要只写在 `:focus` / `:hover` 里，否则退出时是瞬变。
 12. **重绘不能打断动画**：先乐观更新 DOM，接口成功后只更新内存；必须重绘时等过渡结束。
+13. **临时提示只走底部那条状态栏**（`.toast-root` 里的 `.toast`）：最多三条、新的从下面进来、旧的往上挪一格、满了先让最老的一边飘走一边渐隐。它也是唯一的提示出口，别再单独造横幅。

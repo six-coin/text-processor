@@ -101,6 +101,23 @@
 
   function onKeydown(event) {
     const mod = event.ctrlKey || event.metaKey;
+    if (mod && event.key.toLowerCase() === "a") {
+      // 焦点/选区在正文里时，Ctrl+A 只选正文：默认行为会把侧边栏一起选进来，
+      // 连搜索框的占位文字都会被带亮。
+      const doc = $("#doc-text");
+      const selection = window.getSelection();
+      const inDoc =
+        doc &&
+        (document.activeElement === doc ||
+          (selection && selection.rangeCount && doc.contains(selection.anchorNode)));
+      if (!inDoc) return;
+      event.preventDefault();
+      const range = document.createRange();
+      range.selectNodeContents(doc);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      return;
+    }
     if (mod && event.key.toLowerCase() === "n") {
       if (TP.ui.view !== "main") return;
       event.preventDefault();

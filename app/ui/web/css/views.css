@@ -442,6 +442,13 @@
   flex-direction: column;
 }
 
+/* 设置项之间不画线，只在「外观 / 日志 / 其他」这些大块之间画一条。 */
+.settings-divider {
+  height: 0;
+  margin: 4px 0;
+  border-top: 1px solid var(--border-soft);
+}
+
 .settings-list .card-row .row-label {
   flex: 1;
 }

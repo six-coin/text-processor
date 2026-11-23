@@ -373,6 +373,7 @@ kbd {
 
 .select-arrow {
   position: absolute;
+  top: 50%;
   right: 10px;
   width: 12px;
   height: 12px;
@@ -381,11 +382,12 @@ kbd {
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
+  transform: translateY(-50%);
   transition: transform 0.16s var(--ease);
 }
 
 .select.open .select-arrow {
-  transform: rotate(180deg);
+  transform: translateY(-50%) rotate(180deg);
 }
 
 .select-menu {
@@ -702,13 +704,11 @@ kbd {
   justify-content: space-between;
   gap: 16px;
   padding: 10px 0;
-  border-top: 1px solid var(--border-soft);
 }
 
 /* 卡片上下各 10px，由卡片自己收尾：首行不留上内边距，末行也不留下内边距。 */
 .card-row:first-child {
   padding-top: 0;
-  border-top: none;
 }
 
 .card-row:last-child {
@@ -741,9 +741,11 @@ kbd {
   max-width: 55%;
 }
 
+/* 所有宽度可变的控件统一成同一档：下拉框、输入框，以及数据目录的
+   「输入框 + 更改 + 重置（+ 立即重启）」整组，都是 300px。 */
 .card-row .row-control .input,
 .card-row .row-control .select {
-  width: 220px;
+  width: 300px;
 }
 
 /* ---------- 空状态 ---------- */
@@ -884,12 +886,15 @@ kbd {
   flex: 1;
 }
 
-/* ---------- 轻提示 ---------- */
+/* ---------- 状态栏 ----------
+   底部居中的圆角黑条，界面上唯一的临时提示出口。容器底边固定、条目往上堆，
+   所以新的一条从下面出来时，已有的会自己上移一格；最多同时三条。 */
 .toast-root {
   position: fixed;
   left: 50%;
   bottom: 28px;
-  z-index: 70;
+  /* 高于弹窗（50）与侧栏浮层：提示不能被正在做的事盖住。 */
+  z-index: 200;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -899,23 +904,70 @@ kbd {
 }
 
 .toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   max-width: 70vw;
-  padding: 9px 18px;
+  padding: 10px 18px;
   border-radius: 999px;
   background: var(--toast-bg);
   color: #fff;
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.6;
   box-shadow: 0 10px 30px var(--shadow-strong);
-  animation: toast-in 0.2s var(--ease);
 }
 
 .toast.is-error {
   background: var(--toast-error);
 }
 
+/* 进场：从下方淡入并轻微放大 */
+.toast.is-entering {
+  animation: toast-in 0.2s var(--ease);
+}
+
+/* 退场：往上飘一点同时淡出 */
 .toast.is-leaving {
   animation: toast-out 0.2s ease forwards;
+}
+
+/* 数据目录：输入框 + 更改 + 重置（+ 立即重启）整组固定 300px，
+   和上面的输入框/下拉框同宽。 */
+.row-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 300px;
+  max-width: 100%;
+}
+
+/* 输入框吃掉按钮之外剩下的宽度。 */
+.card-row .row-tools .input {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+/* 数据目录那一行下面：说明 + 「立即重启」 */
+.card-row.has-foot {
+  flex-wrap: wrap;
+  /* 行末说明贴着这一行走，不要留出 16px 的列间距。 */
+  row-gap: 4px;
+}
+
+.card-row-foot {
+  flex: 1 0 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-row-foot .row-hint {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 /* ---------- 提示条 ---------- */

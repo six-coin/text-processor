@@ -16,8 +16,10 @@ from __future__ import annotations
 
 import os
 import shutil
+import stat
 import tempfile
 from pathlib import Path
+from typing import Any
 
 VENDOR = "six-coin"
 PROJECT = "text-processor"
@@ -133,9 +135,15 @@ def pending_data_dir() -> Path | None:
 def request_data_dir(raw: str, base: Path | None = None) -> Path:
     """记下新的数据目录，等下次启动搬过去；改回当前目录只清标记。"""
     target = normalize_data_dir(raw, base)
-    if target == read_data_dir():
+    current = read_data_dir()
+    # 少了项目代号的历史指针会让 normalize 算出一个「当前目录的子目录」；那不是
+    # 用户想换地方，只是同一处地方的另一种写法，按「没有变化」处理。
+    if _same_dir(target, current) or _same_dir(target, normalize_data_dir(str(current))):
         clear_pending_data_dir()
-        return target
+        return current
+    if is_nested(target, current):
+        raise OSError(f"不能把数据目录放进当前数据目录里面：{current}")
+    _ensure_writable(target)
     LOCAL_DIR.mkdir(parents=True, exist_ok=True)
     temp = DATA_PENDING.with_suffix(".tmp")
     temp.write_text(str(target), encoding="utf-8", newline="\n")
@@ -151,13 +159,70 @@ def clear_pending_data_dir() -> None:
         pass
 
 
+def _same_dir(left: Path, right: Path) -> bool:
+    """Windows 路径不分大小写，比较前统一成规范形式。"""
+    return os.path.normcase(os.path.normpath(str(left))) == os.path.normcase(
+        os.path.normpath(str(right))
+    )
+
+
 def is_nested(inner: Path, outer: Path) -> bool:
-    """``inner`` 是否在 ``outer`` 里（含相等）。"""
+    """``inner`` 是否在 ``outer`` 里（含相等）。比较不分大小写。"""
+    left = os.path.normcase(os.path.normpath(str(inner)))
+    right = os.path.normcase(os.path.normpath(str(outer)))
+    if left == right:
+        return True
+    return left.startswith(right.rstrip("\\/") + os.sep)
+
+
+def _ensure_writable(target: Path) -> None:
+    """目标目录建得出来、写得进去，否则当场抛 ``OSError``。"""
+    target.mkdir(parents=True, exist_ok=True)
+    probe = target / ".sixcoin-write-probe"
+    probe.write_text("", encoding="utf-8")
+    probe.unlink()
+
+
+def _move_item(item: Path, destination: Path) -> None:
+    """搬一项到目标位置；只读属性挡路时先去掉再搬一次。
+
+    用户的数据目录里常有只读文件（从光盘、别人机器上拷来的文稿）。
+    跨盘搬迁时 ``shutil.move`` 是先复制再删源，删一个只读文件会得到「拒绝访问」，
+    整次搬迁就卡在第一个文件上：数据还留在旧目录，指针却已经指向新目录。
+    """
     try:
-        inner.relative_to(outer)
-    except ValueError:
-        return False
-    return True
+        shutil.move(str(item), str(destination))
+    except PermissionError:
+        _clear_read_only(item)
+        # 上一次可能已经复制了一半：先清掉残骸。留着它，``shutil.move`` 会把源
+        # 目录整个塞进这个同名目录，数据落到 <目标>/<名字>/<名字>。
+        _remove_partial(destination)
+        shutil.move(str(item), str(destination))
+
+
+def _remove_partial(path: Path) -> None:
+    """清掉上一次搬到一半留下的残骸（目标里本来没有这一项，出现了就是残骸）。"""
+    if not path.exists():
+        return
+    _clear_read_only(path)
+    if path.is_dir():
+        shutil.rmtree(path, ignore_errors=True)
+        return
+    try:
+        path.unlink()
+    except OSError:
+        pass
+
+
+def _clear_read_only(path: Path) -> None:
+    """把只读位清掉，目录往下递归。"""
+    try:
+        os.chmod(path, stat.S_IWRITE | stat.S_IREAD)
+    except OSError:
+        pass
+    if path.is_dir():
+        for child in path.iterdir():
+            _clear_read_only(child)
 
 
 def _move_contents(source: Path, target: Path) -> tuple[list[str], int]:
@@ -182,7 +247,7 @@ def _move_contents(source: Path, target: Path) -> tuple[list[str], int]:
         if destination.exists():
             continue
         try:
-            shutil.move(str(item), str(destination))
+            _move_item(item, destination)
         except OSError as error:
             warnings.append(f"迁移 {item.name} 失败：{error}")
             continue
@@ -199,25 +264,60 @@ def _reconcile_data_dir() -> None:
 
     测试用 ``SIXCOIN_DATA_DIR`` 指定了目录，一律不碰。
     """
-    global MIGRATION_WARNINGS, MIGRATED_ITEMS
+    global MIGRATION
     if os.environ.get(_ENV_DATA, "").strip():
         return
     source = read_data_dir()
-    target = pending_data_dir() or normalize_data_dir(str(source))
-    if target == source:
+    pending = pending_data_dir()
+    # 待搬迁标记写的是「当前目录的规范化形式」时不算换地方：那是同一处地方的
+    # 另一种写法，硬搬只会搬进它自己的子目录。
+    if pending is not None and (
+        _same_dir(pending, source) or _same_dir(pending, normalize_data_dir(str(source)))
+    ):
+        clear_pending_data_dir()
+        _record_migration("same", source, pending)
+        return
+    target = pending or normalize_data_dir(str(source))
+    if _same_dir(target, source):
         clear_pending_data_dir()
         return
     if is_nested(target, source) or is_nested(source, target):
-        MIGRATION_WARNINGS = [f"数据目录不能互相嵌套：{source} → {target}"]
+        _record_migration(
+            "nested", source, target, warnings=[f"数据目录不能互相嵌套：{source} → {target}"]
+        )
         return
-    MIGRATION_WARNINGS, MIGRATED_ITEMS = _move_contents(source, target)
-    write_data_dir(target)
+    try:
+        warnings, moved = _move_contents(source, target)
+        write_data_dir(target)
+    except OSError as error:  # 指针写不下去就留在原处，下次启动再试
+        _record_migration("failed", source, target, warnings=[f"数据目录切换失败：{error}"])
+        return
     clear_pending_data_dir()
+    _record_migration("done", source, target, moved=moved, warnings=warnings)
 
 
-#: 启动时搬迁数据的警告与条数，由 ``bootstrap.prepare()`` 取走写日志。
-MIGRATION_WARNINGS: list[str] = []
-MIGRATED_ITEMS = 0
+def _record_migration(
+    status: str, source: Path, target: Path, moved: int = 0, warnings: list[str] | None = None
+) -> None:
+    """记下本次搬迁的结果。``status`` 只会是 none / same / nested / done / failed。"""
+    global MIGRATION
+    MIGRATION = {
+        "status": status,
+        "moved": moved,
+        "warnings": list(warnings or []),
+        "source": str(source),
+        "target": str(target),
+    }
+
+
+#: 本次启动搬迁的结构化结果，由 ``bootstrap.prepare()`` 写日志、由快照交给设置页。
+MIGRATION: dict[str, Any] = {
+    "status": "none",
+    "moved": 0,
+    "warnings": [],
+    "source": "",
+    "target": "",
+}
 
 _reconcile_data_dir()
 
